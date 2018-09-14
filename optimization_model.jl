@@ -1,32 +1,5 @@
-addprocs()
-
-@everywhere using JuMP, DataFrames, Gurobi, Queryverse
-
-# Set-working directory
-#DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\"
-DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\"
-OUT = "out"
-INPUT = "in"
-
-# Set constants
-LOAD_SHED = [0.25, 0.05, 0]
-BAT_COST = 500 # $/kWh
-PV_COST = 3000 # $/kW
-BAT_EFF = 0.92
-#annual rates
-int_rate = 0.06 # percentage interest rate
-bat_life = 10 # years
-sol_life = 25 # years
-BAT_RATE = int_rate / (1 - (1+int_rate)^(-bat_life))
-PV_RATE = int_rate / (1 - (1+int_rate)^(-sol_life))
-NEM = 0.12
-VOS = 0.03
-
-# identify geography IDs to loop through
-ID_G = load(DIR * INPUT * "\\id.csv") |> DataFrame
-
 ## wrtie optimization function
-@everywhere function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RATE, NEM, DIR, INPUT, i)
+function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RATE, NEM, DIR, INPUT, i)
  
     # set-up data collection objects
     result = DataFrame([Float64,Float64,Float64,String,Float64,Float64,Float64,Float64,Float64], [:pv,:storage,:shed_frac,:id, :load, :ann_cost, :solar_tot,:rfp,:shed_tot], 1)
@@ -110,29 +83,3 @@ ID_G = load(DIR * INPUT * "\\id.csv") |> DataFrame
      
     return status, result, outcome
 end
-
-# Create parallelization
-timing = @elapsed outputs = pmap(1:length(LOAD_SHED)*length(ID_G[1])) do i #
-    solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RATE, NEM, DIR, INPUT, i) 
-end
-
-#write status
-array = outputs |> @map(x->x[1]) |> collect 
-df = DataFrame(status = array) 
-save(DIR * OUT * "\\status_v5.csv", df) 
-
-#write results table
-array = outputs |> @map(x->x[2]) |> collect
-for i = 2:length(array) 
-    df = array[1]
-    df = append!(df, array[i])
-end
-save(DIR * OUT * "\\results_v5.csv", df)
-
-#write outcome table
-array = outputs |> @map(x->x[3]) |> collect
-for i = 2:length(array) 
-    df = array[1]
-    df = append!(df, array[i])
-end
-save(DIR * OUT * "\\outcome_v5.csv", df)
