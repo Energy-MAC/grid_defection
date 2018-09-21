@@ -1,7 +1,7 @@
 ###############################################################################
 ###
 ###   Off-grid Analysis
-###   PURPOSE: aggregate inputs for plotting
+###   PURPOSE: aggregate inputs for analysis
 ###
 ###############################################################################
 
@@ -15,7 +15,7 @@ p_load(magrittr, dplyr, stringr, ggplot2,data.table, ggmap, usmap, mapproj)
 # Set working directory
 DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
 OUT = "out"
-INPUT = "in"
+IN = "in"
 ##########################################################
 ## I. read in output data ################################
 ##########################################################
@@ -112,3 +112,59 @@ plot_usmap(region = "county") +
   labs(title = "US Counties", subtitle = "This is a blank map of the counties of the United States.") + 
   theme(panel.background = element_rect(colour = "black", fill = "lightblue"))
           
+##########################################################
+## II. TMY correlation analysis ##########################
+##########################################################
+
+# collect TMY months
+list <- list.files(paste0(DIR,IN, "\\TMY"))
+names <- as.numeric(str_extract(list, "\\-*\\d+\\.*\\d*"))
+collect <- vector("list",length(list))
+
+for (i in 1:length(list)) {
+  
+  #get tmy data
+  tmy <- fread(paste0(DIR,IN,"\\TMY\\", list[i]),skip=1)
+  tmy$month <- substr(tmy$`Date (MM/DD/YYYY)`,1,2)
+  tmy$year <-  substr(tmy$`Date (MM/DD/YYYY)`, nchar(tmy$`Date (MM/DD/YYYY)`)-4+1, 
+                      nchar(tmy$`Date (MM/DD/YYYY)`))
+  
+  #subset data of interest
+  values <- unique(tmy[,c("year","month")])
+  values$id <- names[i]
+  
+  #store values
+  collect[[i]] <- values
+
+}
+
+tmy_dates <- do.call(rbind, collect)
+saveRDS(tmy_dates,paste0(DIR,OUT, "\\tmy_dates"))
+
+##aggregate solar/load data
+list <- fread(paste0(DIR,IN,"\\optimization_list.csv"))
+collect <- vector("list",length(list))
+
+#aggregate solar/load data
+for (i in 1:length(list)) {
+  
+  #get tmy data
+  data <- readRDS(paste0(DIR,IN,"\\all_data\\BASE_", list[i,3],"_",list[i,4]))
+
+  #subset data of interest
+  values <- tmy[,c("gen","load","month","year")]
+  values$id <- list[i,10]
+  
+  #store values
+  collect[[i]] <- values
+  
+}
+
+#collect results
+load_sol <- do.call(rbind, collect)
+
+#merge on tmy_dates information
+dates <- readRDS(paste0(DIR,OUT,"\\tmy_dates"))
+
+load_sol <- merge(load_sol, dates, by = "id", all.x=TRUE)
+                 

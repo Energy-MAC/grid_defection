@@ -122,15 +122,21 @@ for (i in 1:nrow(list)) {
   sol1 <- sol %>% group_by(year,month, day, hour) %>% summarise(gen = mean(generation))
 
   #merge columns and write table
-  dt <- cbind(sol1[,5], temp_med[,2])
-  write.csv(dt, paste0(DIR, IN,"all_data\\BASE_", list[i,3],"_", list[i,4],".csv"))
+  dt <- cbind(sol1[,c(1,2,3,5)], temp_med[,2])
+  saveRDS(dt, paste0(DIR, IN,"all_data\\BASE_", list[i,3],"_", list[i,4]))
   
-  dt <- cbind(sol1[,5], temp_high[,2])
-  write.csv(dt, paste0(DIR, IN,"all_data\\HIGH_", list[i,3],"_", list[i,4],".csv"))
+  dt <- cbind(sol1[,c(1,2,3,5)], temp_high[,2])
+  saveRDS(dt, paste0(DIR, IN,"all_data\\HIGH_", list[i,3],"_", list[i,4]))
   
-  dt <- cbind(sol1[,5], temp_low[,2])
-  write.csv(dt, paste0(DIR, IN,"all_data\\LOW_", list[i,3],"_", list[i,4],".csv"))
+  dt <- cbind(sol1[,c(1,2,3,5)], temp_low[,2])
+  saveRDS(dt, paste0(DIR, IN,"all_data\\LOW_", list[i,3],"_", list[i,4]))
 }
+
+##########################################################
+## III. connect rates to optimization file ###############
+##########################################################
+
+
 
 
 
