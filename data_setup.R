@@ -13,7 +13,7 @@ library(pacman)
 p_load(magrittr, dplyr, stringr, rjson, maps,maptools, spatstat,rgeos, broom, data.table)
 
 # Set working directory
-DIR <- "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
 OUT <- "in\\res_solar"
 IN <-  "in\\"
 LD<- "LOW"
@@ -80,5 +80,57 @@ final <- merge(sol_data, load_data, by="row_in_2")
 
 #output
 write.csv(final,paste0(DIR, IN,"optimization_list.csv"))
+
+
+##########################################################
+## III. Combining input data #############################
+##########################################################
+list <- fread(paste0(DIR,IN,"optimization_list.csv"))
+
+for (i in 1:nrow(list)) {
+  
+  #create load dataframes
+  temp_low <- fread(paste0(DIR,IN,"res_load\\LOW\\", list[i,10],".csv"), col.names=c("V","load"))
+  temp_low <- do.call("rbind", replicate(9,temp_low, simplify = FALSE))
+  temp_med <- fread(paste0(DIR,IN,"res_load\\BASE\\", list[i,10],".csv"), col.names=c("V","load"))
+  temp_med <- do.call("rbind", replicate(9,temp_med, simplify = FALSE))
+  temp_high <- fread(paste0(DIR,IN,"res_load\\HIGH\\", list[i,10],".csv"), col.names=c("V","load"))
+  temp_high <- do.call("rbind", replicate(9,temp_high, simplify = FALSE))
+  
+  #create solar dataframe
+  sol <- fread(paste0(DIR,IN,"sol_data\\", list[i,3],"_", list[i,4],".csv"))
+  
+  #convert local to time element
+  sol$time <- as.POSIXct(strptime(sol$local_time_stor, "%Y-%m-%d %H:%M:%S"))
+  sol$year <- format(sol$time, "%Y")
+  sol$month <- format(sol$time, "%m")
+  sol$day <- format(sol$time, "%d")
+  sol$hour <- format(sol$time, "%H")
+  sol <- sol[,c(5,6,7,8,3)]
+  sol <- sol[complete.cases(sol), ]
+  
+  #create appended table
+  year <- c("2008","2009","2010","2011","2012","2013","2014","2015","2016")
+  month <- c("03","03","03","03","03","03","03","03","03")
+  day <- c("09","08","14","13","11","10","09","08","13")
+  hour <- c("02","02","02","02","02","02","02","02","02")
+  generation <- c(0,0,0,0,0,0,0,0,0)
+  add <- data.frame(year,month,day,hour,generation)
+  sol<- rbind(sol,add)
+  
+  #drop feb 29 data (maybe by dropping duplicates)
+  sol1 <- sol %>% group_by(year,month, day, hour) %>% summarise(gen = mean(generation))
+
+  #merge columns and write table
+  dt <- cbind(sol1[,5], temp_med[,2])
+  write.csv(dt, paste0(DIR, IN,"all_data\\BASE_", list[i,3],"_", list[i,4],".csv"))
+  
+  dt <- cbind(sol1[,5], temp_high[,2])
+  write.csv(dt, paste0(DIR, IN,"all_data\\HIGH_", list[i,3],"_", list[i,4],".csv"))
+  
+  dt <- cbind(sol1[,5], temp_low[,2])
+  write.csv(dt, paste0(DIR, IN,"all_data\\LOW_", list[i,3],"_", list[i,4],".csv"))
+}
+
 
 
