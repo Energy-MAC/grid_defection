@@ -132,6 +132,19 @@ for (i in 1:nrow(list)) {
   saveRDS(dt, paste0(DIR, IN,"all_data\\LOW_", list[i,3],"_", list[i,4]))
 }
 
+## save rds files as csvs
+DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+IN <-  "in\\"
+
+list <- list.files(paste0(DIR,IN,"all_data\\R files"))
+
+for (i in 1:length(list)) {
+  
+  out <- readRDS(paste0(DIR, IN,"all_data\\R files\\",list[i]))
+  
+  write.csv(out,paste0(DIR, IN,"all_data\\",list[i],".csv"))
+  
+}
 ##########################################################
 ## III. connect rates to optimization file ###############
 ##########################################################
