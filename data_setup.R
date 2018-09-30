@@ -64,8 +64,10 @@ tmy_coor$ID <- as.numeric(levels(tmy_coor$ID))[tmy_coor$ID]
 
 ##get IDs of actual load data
 load_data <- fread(paste0(DIR,IN,"id.csv"))
+load_data <- load_data[which(load_data$ID!= 724365 & load_data$ID!= 724935 & load_data$ID!= 725477), ]
 load_data <- merge(load_data, tmy_coor, by="ID")
 load_data$row_in_2 <- as.numeric(row.names(load_data))
+
 
 #pull out the coords
 cord2 <- load_data[,c(3,2)]
@@ -120,7 +122,8 @@ for (i in 1:nrow(list)) {
   
   #drop feb 29 data (maybe by dropping duplicates)
   sol1 <- sol %>% group_by(year,month, day, hour) %>% summarise(gen = mean(generation))
-
+  sol1 <- data.frame(lapply(sol1, function(x) as.numeric(as.character(x))))
+ 
   #merge columns and write table
   dt <- cbind(sol1[,c(1,2,3,5)], temp_med[,2])
   saveRDS(dt, paste0(DIR, IN,"all_data\\BASE_", list[i,3],"_", list[i,4]))

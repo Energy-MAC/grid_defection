@@ -149,7 +149,7 @@ collect <- vector("list",length(list))
 for (i in 1:length(list)) {
   
   #get tmy data
-  data <- readRDS(paste0(DIR,IN,"\\all_data\\BASE_", list[i,3],"_",list[i,4]))
+  data <- data.frame(readRDS(paste0(DIR,IN,"\\all_data\\BASE_", list[i,3],"_",list[i,4])))
 
   #subset data of interest
   values <- tmy[,c("gen","load","month","year")]
