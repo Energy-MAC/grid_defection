@@ -14,50 +14,115 @@ p_load(magrittr, dplyr, stringr, ggplot2,data.table, ggmap, usmap, mapproj)
 
 # Set working directory
 DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
-OUT = "out"
-IN = "in"
+OUT = "out\\"
+IN = "in\\"
 ##########################################################
 ## I. read in output data ################################
 ##########################################################
-id = fread(paste0(DIR,INPUT,"\\id.csv"))
 
-sol <- data.frame()
-for (i in 1:length(id$ID)) {
-  temp.full <- fread(paste0(DIR,INPUT,"\\res_solar\\",id[i], "TYA.CSV.csv"))
-  temp.full$hr <- rep(1:24,365)
-  temp.full$id <- id[i]
+#calculate average solar profiles
+list <- fread(paste0(DIR,IN,"optimization_list.csv"))
+sol_agg <- data.frame()
+sol_act <- data.frame()
+
+for (i in 1:nrow(list)) {
   
-  temp <- temp.full %>% group_by(hr, id) %>% summarize(out = mean(Watt)) %>% as.data.frame()
+  #create solar dataframe
+  temp <- fread(paste0(DIR,IN,"sol_data\\", list[i,3],"_", list[i,4],".csv"))
   
+  #convert local to time element
+  temp$time <- as.POSIXct(strptime(temp$local_time_stor, "%Y-%m-%d %H:%M:%S"))
+  temp$year <- as.numeric(format(temp$time, "%Y"))
+  temp$month <- as.numeric(format(temp$time, "%m"))
+  temp$day <- as.numeric(format(temp$time, "%d"))
+  temp$hour <- format(temp$time, "%H")
+  temp$id <- paste0(list[i,3],"_", list[i,4])
   
-  sol <- rbind(sol,temp)
+  temp.agg <- temp %>% group_by(hour, id) %>% summarize(avg = mean(generation)) %>% as.data.frame()
+  
+  sol_agg <- rbind(sol_agg,temp.agg)
+  
+  temp.act <- filter(temp, year == 2014, month == 10, day == 15)
+  temp.act <- temp.act %>% group_by(hour, id) %>% summarize(avg = mean(generation)) %>% as.data.frame()
+  
+  sol_act <- rbind(sol_act,temp.act)
 }
 
+#calculate average load profiles
+load_data = fread(paste0(DIR,IN,"\\id.csv"))
+id <- id[which(load_data$ID!= 724365 & load_data$ID!= 724935 & load_data$ID!= 725477), ]
 
-load <- data.frame()
+load_agg <- data.frame()
+load_act <- data.frame()
+
 for (i in 1:length(id$ID)) {
-  temp.full <- fread(paste0(DIR,INPUT,"\\res_load\\BASE\\",id[i], ".csv"))
-  colnames(temp.full) <- c("num","Watt")
-  temp.full$hr <- rep(1:24,365)
-  temp.full$id <- id[i]
   
-  temp <- temp.full %>% group_by(hr, id) %>% 
-    summarize(avg = mean(Watt)*1000,
-               tot = sum(Watt)) %>% as.data.frame()
+  #base case
+  temp <- fread(paste0(DIR,IN,"\\res_load\\BASE\\",id[i], ".csv"), col.names=c("V","load"))
+  temp$hr <- rep(1:24,365)
+  temp$id <- id[i]
+  temp$scen <- "BASE"
   
+  temp.agg <- temp %>% group_by(hr, id, scen) %>% 
+    summarize(avg = mean(load)*1000) %>% as.data.frame()
   
-  load <- rbind(load,temp)
+  load_agg <- rbind(load_agg,temp.agg)
+  
+  temp.act <- temp[6913:6937,]
+  temp.act <- temp.act %>% group_by(hr, id, scen) %>% 
+    summarize(avg = mean(load)*1000) %>% as.data.frame()
+  
+  load_act <- rbind(load_act,temp.act)
+  
+  #low case
+  temp <- fread(paste0(DIR,IN,"\\res_load\\LOW\\",id[i], ".csv"), col.names=c("V","load"))
+  temp$hr <- rep(1:24,365)
+  temp$id <- id[i]
+  temp$scen <- "LOW"
+  
+  temp.agg <- temp %>% group_by(hr, id, scen) %>% 
+    summarize(avg = mean(load)*1000) %>% as.data.frame()
+  
+  load_agg <- rbind(load_agg,temp.agg)
+  
+  temp.act <- temp[6913:6937,]
+  temp.act <- temp.act %>% group_by(hr, id, scen) %>% 
+    summarize(avg = mean(load)*1000) %>% as.data.frame()
+  
+  load_act <- rbind(load_act,temp.act)
+  
+  #high case
+  temp <- fread(paste0(DIR,IN,"\\res_load\\HIGH\\",id[i], ".csv"), col.names=c("V","load"))
+  temp$hr <- rep(1:24,365)
+  temp$id <- id[i]
+  temp$scen <- "HIGH"
+  
+  temp.agg <- temp %>% group_by(hr, id, scen) %>% 
+    summarize(avg = mean(load)*1000) %>% as.data.frame()
+  
+  load_agg <- rbind(load_agg,temp.agg)
+  
+  temp.act <- temp[6913:6937,]
+  temp.act <- temp.act %>% group_by(hr, id, scen) %>% 
+    summarize(avg = mean(load)*1000) %>% as.data.frame()
+  
+  load_act <- rbind(load_act,temp.act)
+  
 }
 
 ##output results
-fwrite(sol,paste0(DIR,OUT,"\\sol_agg.csv"))
-fwrite(load,paste0(DIR,OUT,"\\load_agg.csv"))
+fwrite(sol_agg,paste0(DIR,OUT,"\\sol_agg.csv"))
+fwrite(load_agg,paste0(DIR,OUT,"\\load_agg.csv"))
+fwrite(sol_act,paste0(DIR,OUT,"\\sol_act.csv"))
+fwrite(load_act,paste0(DIR,OUT,"\\load_act.csv"))
 
 ##########################################################
 ## II. plot load and solar ###############################
 ##########################################################
-sol <- fread(paste0(DIR,OUT,"\\sol_agg.csv"))
-load <- fread(paste0(DIR,OUT,"\\load_agg.csv"))
+sol_agg <- fread(paste0(DIR,OUT,"\\sol_agg.csv"))
+load_agg <- fread(paste0(DIR,OUT,"\\load_agg.csv"))
+sol_act <- fread(paste0(DIR,OUT,"\\sol_act.csv"))
+load_act <- fread(paste0(DIR,OUT,"\\load_act.csv"))
 
 #solar plots
 jpeg(filename = paste0(DIR,OUT,"\\images\\solar.jpg"), width = 950, height = 480)

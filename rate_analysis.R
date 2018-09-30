@@ -91,7 +91,7 @@ county_rates <- county_rates[,c(2,3,5:17)]
 out_rates <- county_rates %>% group_by(county, state.x) %>% summarise_all(funs(median))
 
 
-
+write.csv(out_rates,paste0(DIR, OUT,"\\county_rates.csv"))
 
 
 

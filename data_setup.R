@@ -68,7 +68,6 @@ load_data <- load_data[which(load_data$ID!= 724365 & load_data$ID!= 724935 & loa
 load_data <- merge(load_data, tmy_coor, by="ID")
 load_data$row_in_2 <- as.numeric(row.names(load_data))
 
-
 #pull out the coords
 cord2 <- load_data[,c(3,2)]
 
@@ -149,10 +148,29 @@ for (i in 1:length(list)) {
   
 }
 ##########################################################
-## III. connect rates to optimization file ###############
+## III. adding load data to optimization file ############
 ##########################################################
 
+list <- fread(paste0(DIR,IN,"optimization_list.csv"))
 
+low <- c()
+med <- c()
+high <- c()
 
+for (i in 1:nrow(list)) {
+  
+  #create load dataframes
+  temp_low <- fread(paste0(DIR,IN,"res_load\\LOW\\", list[i,10],".csv"), col.names=c("V","load"))
+  low <- append(low, sum(temp_low$load))
+  temp_med <- fread(paste0(DIR,IN,"res_load\\BASE\\", list[i,10],".csv"), col.names=c("V","load"))
+  med <- append(med, sum(temp_med$load))
+  temp_high <- fread(paste0(DIR,IN,"res_load\\HIGH\\", list[i,10],".csv"), col.names=c("V","load"))
+  high <- append(high, sum(temp_high$load))
 
+}
 
+list$low_energy <- low
+list$med_energy <- med
+list$high_energy <- high
+
+write.csv(list,paste0(DIR, IN,"optimization_list_energy.csv"))
