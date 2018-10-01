@@ -35,7 +35,7 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
     tot_load = sum(load_v)
 
     # Set-up optimization model
-    m = Model(solver = GurobiSolver()) # specify the solver, pass along to model
+    m = Model(solver = GurobiSolver()) # ClpSolver() specify the solver, pass along to model
 
     @variables m begin
         x >= 0. ## solar capacity
