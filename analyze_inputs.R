@@ -50,7 +50,7 @@ for (i in 1:nrow(list)) {
 
 #calculate average load profiles
 load_data = fread(paste0(DIR,IN,"\\id.csv"))
-id <- id[which(load_data$ID!= 724365 & load_data$ID!= 724935 & load_data$ID!= 725477), ]
+id <- load_data[which(load_data$ID!= 724365 & load_data$ID!= 724935 & load_data$ID!= 725477), ]
 
 load_agg <- data.frame()
 load_act <- data.frame()
@@ -119,23 +119,130 @@ fwrite(load_act,paste0(DIR,OUT,"\\load_act.csv"))
 ##########################################################
 ## II. plot load and solar ###############################
 ##########################################################
+theme_plot <- theme(
+  legend.position = "right",
+  panel.background = element_rect(fill = NA),
+  panel.border = element_rect(fill = NA, color = "grey75"),
+  axis.ticks = element_line(color = "grey85"),
+  panel.grid.major = element_line(color = "grey95", size = 0.2),
+  panel.grid.minor = element_line(color = "grey95", size = 0.2),
+  legend.key = element_blank(),
+  legend.title = element_blank(),
+  legend.spacing.x = unit(0.3, "cm"))
+
 sol_agg <- fread(paste0(DIR,OUT,"\\sol_agg.csv"))
 load_agg <- fread(paste0(DIR,OUT,"\\load_agg.csv"))
 sol_act <- fread(paste0(DIR,OUT,"\\sol_act.csv"))
 load_act <- fread(paste0(DIR,OUT,"\\load_act.csv"))
 
+sol_max <- sol_agg %>% group_by(id) %>% summarize(max = max(avg))
+sol_agg <- merge(sol_agg, sol_max, by="id")
+
+sol_max <- sol_act %>% group_by(id) %>% summarize(max = max(avg))
+sol_act <- merge(sol_act, sol_max, by="id")
+
 #solar plots
-jpeg(filename = paste0(DIR,OUT,"\\images\\solar.jpg"), width = 950, height = 480)
-ggplot(data=sol, aes(hr,out)) + geom_line(aes(color = id, group = id)) +
-  xlab(label = "Hour of Day") + ylab(label = "Watt output (W)") +
-  ggtitle(label = "Figure 2: Solar output multiplier across 933 locations")
+jpeg(filename = paste0(DIR,OUT,"\\images\\solar_avg.jpg"), width = 500, height = 480)
+ggplot(data=sol_agg, aes(hour,avg)) + geom_line(aes(color = max, group = id), alpha = 0.4, size = .2) + 
+  theme_plot + xlab(label = "Hour of Day") + ylab(label = "Output as percent of nameplate capacity") +
+  scale_x_continuous(breaks=seq(0,24,2)) + ggtitle(label = "Average Data") + 
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=16,face="bold"), 
+        legend.position = "none", plot.title = element_text(size=18,face="bold", hjust=0.5)) + 
+  scale_y_continuous(breaks=seq(0,1,0.1), limits=c(0,0.8)) 
 dev.off()
 
-#load plots
-jpeg(filename = paste0(DIR,OUT,"\\images\\load.jpg"), width = 950, height = 480)
-ggplot(data=load, aes(hr,avg)) + geom_line(aes(color = id, group = id)) +
-  xlab(label = "Hour of Day") + ylab(label = "Watt consumption (W)") +
-  ggtitle(label = "Figure 1: Load consumption across 933 locations")
+sol_act_fin <- sol_act[1:7680,]
+
+#solar plots
+jpeg(filename = paste0(DIR,OUT,"\\images\\solar_act.jpg"), width = 500, height = 480)
+ggplot(data=sol_act_fin, aes(hour,avg)) + geom_line(aes(color = max, group = id), alpha = 0.5, size = .2) + 
+  theme_plot + xlab(label = "Hour of Day") + ylab(label = "Output as percent of nameplate capacity") +
+  scale_x_continuous(breaks=seq(0,24,2)) + ggtitle(label = "October 15th, 2014 Data for 10% locations") + 
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=16,face="bold"), 
+        legend.position = "none", plot.title = element_text(size=18,face="bold", hjust=0.5)) + 
+  scale_y_continuous(breaks=seq(0,1,0.1), limits=c(0,0.8)) 
+dev.off()
+
+#load plotting
+load_max <- load_agg %>% group_by(id) %>% summarize(max = max(avg))
+load_agg <- merge(load_agg, load_max, by="id")
+
+load_max <- load_act %>% group_by(id) %>% summarize(max = max(avg))
+load_act <- merge(load_act, load_max, by="id")
+
+
+#load1
+jpeg(filename = paste0(DIR,OUT,"\\images\\load_avg_BASE.jpg"), width = 500, height = 250)
+ggplot(data=load_agg[which(load_agg$scen =="BASE")], aes(hr,avg/1000)) + 
+  geom_line(aes(color = max, group = id), alpha = 0.4, size = .2) + 
+  theme_plot + ylab(label = "Consumption (kWh)") +
+  scale_x_continuous(breaks=seq(0,24,2)) + ggtitle(label = "Average Data: Base Case") + 
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=16,face="bold"), 
+        legend.position = "none", plot.title = element_text(size=18,face="bold", hjust=0.5),
+        axis.text.x=element_blank(), axis.ticks.x=element_blank(),axis.title.x=element_blank()) + 
+  scale_y_continuous(breaks=seq(0,5,1), limits=c(0,5)) 
+dev.off()
+
+#load2
+jpeg(filename = paste0(DIR,OUT,"\\images\\load_avg_LOW.jpg"), width = 500, height = 250)
+ggplot(data=load_agg[which(load_agg$scen =="LOW")], aes(hr,avg/1000)) + 
+  geom_line(aes(color = max, group = id), alpha = 0.4, size = .2) + 
+  theme_plot + xlab(label = "Hour of Day") + ylab(label = "Consumption (kWh)") +
+  scale_x_continuous(breaks=seq(0,24,2)) + ggtitle(label = "Average Data: Low Case") + 
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=16,face="bold"), 
+        legend.position = "none", plot.title = element_text(size=18,face="bold", hjust=0.5),
+        axis.text.x=element_blank(), axis.ticks.x=element_blank(),axis.title.x=element_blank()) + 
+  scale_y_continuous(breaks=seq(0,5,1), limits=c(0,5)) 
+dev.off()
+
+#load3
+jpeg(filename = paste0(DIR,OUT,"\\images\\load_avg_HIGH.jpg"), width = 500, height = 250)
+ggplot(data=load_agg[which(load_agg$scen =="HIGH")], aes(hr,avg/1000)) + 
+  geom_line(aes(color = max, group = id), alpha = 0.4, size = .2) + 
+  theme_plot + xlab(label = "Hour of Day") + ylab(label = "Consumption (kWh)") +
+  scale_x_continuous(breaks=seq(0,24,2)) + ggtitle(label = "Average Data: High Case") + 
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=16,face="bold"), 
+        legend.position = "none", plot.title = element_text(size=18,face="bold", hjust=0.5)) + 
+  scale_y_continuous(breaks=seq(0,5,1), limits=c(0,5)) 
+dev.off()
+
+##ACTUAL LOAD##
+#load1
+jpeg(filename = paste0(DIR,OUT,"\\images\\load_act_BASE.jpg"), width = 500, height = 250)
+ggplot(data=load_act[which(load_act$scen =="BASE")], aes(hr,avg/1000)) + 
+  geom_line(aes(color = max, group = id), alpha = 0.4, size = .2) + 
+  theme_plot + ylab(label = "Consumption (kWh)") +
+  scale_x_continuous(breaks=seq(0,24,2)) + ggtitle(label = "October 15th, TMY3, Base") + 
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=16,face="bold"), 
+        legend.position = "none", plot.title = element_text(size=18,face="bold", hjust=0.5),
+        axis.text.x=element_blank(), axis.ticks.x=element_blank(),axis.title.x=element_blank(),
+        axis.text.y=element_blank(), axis.ticks.y=element_blank(),axis.title.y=element_blank()) + 
+  scale_y_continuous(breaks=seq(0,5,1), limits=c(0,5)) 
+dev.off()
+
+#load2
+jpeg(filename = paste0(DIR,OUT,"\\images\\load_act_LOW.jpg"), width = 500, height = 250)
+ggplot(data=load_act[which(load_act$scen =="LOW")], aes(hr,avg/1000)) + 
+  geom_line(aes(color = max, group = id), alpha = 0.4, size = .2) + 
+  theme_plot + ylab(label = "Consumption (kWh)") +
+  scale_x_continuous(breaks=seq(0,24,2)) + ggtitle(label = "October 15th, TMY3, Low") + 
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=16,face="bold"), 
+        legend.position = "none", plot.title = element_text(size=18,face="bold", hjust=0.5),
+        axis.text.x=element_blank(), axis.ticks.x=element_blank(),axis.title.x=element_blank(),
+        axis.text.y=element_blank(), axis.ticks.y=element_blank(),axis.title.y=element_blank()) + 
+  scale_y_continuous(breaks=seq(0,5,1), limits=c(0,5)) 
+dev.off()
+
+#load2
+jpeg(filename = paste0(DIR,OUT,"\\images\\load_act_HIGH.jpg"), width = 500, height = 250)
+ggplot(data=load_act[which(load_act$scen =="HIGH")], aes(hr,avg/1000)) + 
+  geom_line(aes(color = max, group = id), alpha = 0.4, size = .2) + 
+  theme_plot + ylab(label = "Consumption (kWh)") + xlab(label = "Hour of Day") +
+  scale_x_continuous(breaks=seq(0,24,2)) + ggtitle(label = "October 15th, TMY3, High") + 
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=16,face="bold"), 
+        legend.position = "none", plot.title = element_text(size=18,face="bold", hjust=0.5),
+        axis.text.y=element_blank(), axis.ticks.y=element_blank(),axis.title.y=element_blank()) + 
+  scale_y_continuous(breaks=seq(0,5,1), limits=c(0,5)) 
 dev.off()
 
 ##########################################################
