@@ -69,7 +69,7 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
     result[1, :pv] = getvalue(x)
     result[1, :storage] = getvalue(y)
     #result[1, :shed_frac] = shed_amt
-    result[1, :id] = case * sol_id
+    result[1, :id] = shed_amt * case * sol_id 
     #result[1, :load] = tot_load
     #result[1, :ann_cost] = getobjectivevalue(m)
     #result[1, :solar_tot] = getvalue(x) * sum(sol[i] for i in 1:78840)
