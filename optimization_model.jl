@@ -1,9 +1,9 @@
 ## wrtie optimization function
-function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RATE, DIR, INPUT, i)
+function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RATE, INV_COST, INV_RATE, DIR, INPUT, i)
  
     # set-up data collection objects
     #result = DataFrame([Float64,Float64,Float64,String,Float64,Float64, Float64, Float64,Float64], [:pv,:storage,:shed_frac,:id, :load, :ann_cost, :solar_tot,:pv_curtail,:shed_tot], 1)
-    result = DataFrame([Float64,Float64,String], [:pv,:storage,:id], 1)
+    result = DataFrame([Float64,Float64,String, Float64], [:pv,:storage,:id, :pv_curtail], 1)
     #outcome = DataFrame([Float64, Float64, Float64,Float64, Float64, Float64, Float64, Float64, String], [:sol,:load,:power_in,:power_out,:shed,:pv_curtail,:bat_chg,:shed_frac,:id], 78840)
 
     #pick reliability level
@@ -37,7 +37,7 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
     max_load = maximum(load_v)
 
     # Set-up optimization model
-    m = Model(solver = GurobiSolver()) # ClpSolver() specify the solver, pass along to model
+    m = Model(solver = GurobiSolver(OutputFlag=0)) # ClpSolver() specify the solver, pass along to model
 
     @variables m begin
         x >= 0. ## solar capacity
@@ -61,7 +61,7 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
         #shedding[i=1:78840], shed[i] <= load_v[i] ## can't shed load you don't have
     end)
 
-    @objective(m, Min, x * PV_COST * PV_RATE + y * BAT_COST * BAT_RATE) 
+    @objective(m, Min, x * PV_COST * PV_RATE + y * BAT_COST * BAT_RATE + sum(power_out[i] for i in 1:78840) * 0.001) 
 
     status = solve(m)
     
@@ -69,23 +69,23 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
     result[1, :pv] = getvalue(x)
     result[1, :storage] = getvalue(y)
     #result[1, :shed_frac] = shed_amt
-    result[1, :id] = shed_amt * case * sol_id 
+    result[1, :id] = string(shed_amt) * "_" * case * sol_id 
     #result[1, :load] = tot_load
     #result[1, :ann_cost] = getobjectivevalue(m)
     #result[1, :solar_tot] = getvalue(x) * sum(sol[i] for i in 1:78840)
-    #result[1, :pv_curtail] = sum(getvalue(pv_curtail[i]) for i in 1:78840)
+    result[1, :pv_curtail] = sum(getvalue(pv_curtail[i]) for i in 1:78840)
     #result[1, :shed_tot] = sum(getvalue(shed[i]) for i in 1:78840)
     
     #optimization results
-    #outcome[1:78840, :sol] = sol * getvalue(x)
-    #outcome[1:78840, :load] = load_v
-    #outcome[1:78840, :power_in] = getvalue(power_in[1:78840])
-    #outcome[1:78840, :power_out] = getvalue(power_out[1:78840])
-    #outcome[1:78840, :shed] = getvalue(shed)
-    #outcome[1:78840, :pv_curtail] = getvalue(pv_curtail)
-    #outcome[1:78840, :bat_chg] = getvalue(bat_chg[1:78840])
-    #outcome[1:78840, :shed_frac] = fill(shed_amt,78840)
-    #outcome[1:78840, :id] = fill(case * sol_id,78840)
+    # outcome[1:78840, :sol] = sol * getvalue(x)
+    # outcome[1:78840, :load] = load_v
+    # outcome[1:78840, :power_in] = getvalue(power_in[1:78840])
+    # outcome[1:78840, :power_out] = getvalue(power_out[1:78840])
+    # outcome[1:78840, :shed] = getvalue(shed)
+    # outcome[1:78840, :pv_curtail] = getvalue(pv_curtail)
+    # outcome[1:78840, :bat_chg] = getvalue(bat_chg[1:78840])
+    # outcome[1:78840, :shed_frac] = fill(shed_amt,78840)
+    # outcome[1:78840, :id] = fill(case * sol_id,78840)
      
     return result
 end
