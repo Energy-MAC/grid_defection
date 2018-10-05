@@ -1,32 +1,13 @@
 ## wrtie optimization function
-function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RATE, INV_COST, INV_RATE, DIR, INPUT, i)
+function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RATE, INV_COST, INV_RATE, DIR, INPUT, OUT, i)
  
     # set-up data collection objects
     #result = DataFrame([Float64,Float64,Float64,String,Float64,Float64, Float64, Float64,Float64], [:pv,:storage,:shed_frac,:id, :load, :ann_cost, :solar_tot,:pv_curtail,:shed_tot], 1)
     result = DataFrame([Float64,Float64,String, Float64], [:pv,:storage,:id, :pv_curtail], 1)
     #outcome = DataFrame([Float64, Float64, Float64,Float64, Float64, Float64, Float64, Float64, String], [:sol,:load,:power_in,:power_out,:shed,:pv_curtail,:bat_chg,:shed_frac,:id], 78840)
-
-    #pick reliability level
-    rel_length = length(LOAD_SHED)
-    if i % rel_length == 0
-        index = rel_length
-    else
-        index = i % 2 
-    end
-    shed_amt = LOAD_SHED[index]
-        
+       
     #select geography location
-    g = ceil(Int, i/6) 
-    sol_id = (ID_G[g,3]*"_"*ID_G[g,4])
-
-    #select load case
-    if i % 6 == 1 || i % 6 == 2
-        case = "BASE_"
-    elseif i % 6 == 3 || i % 6 == 4
-        case = "LOW_"
-    else 
-        case = "HIGH_"
-    end
+    sol_id = (ID_G[i,3]*"_"*ID_G[i,4])
 
     # Load in solar and load data
     data = load(DIR * INPUT * "\\all_data\\" * case * sol_id * ".csv")
@@ -56,7 +37,7 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
         #powering[i=1:78840], power_in[i] <= y/4 # rate allowed to charge battery (4 hr battery)
         #depowering[i=1:78840], power_out[i] <= y/4 # rate allowed to discharge battery (4 hr battery)
         balance[i=1:78840], load_v[i]  == power_out[i] - power_in[i] + (sol[i] * x) + shed[i] - pv_curtail[i] ## load balance equation
-        sum(shed[i] for i in 1:78840) <= tot_load * shed_amt ## reliability constraint
+        sum(shed[i] for i in 1:78840) <= tot_load * LOAD_SHED ## reliability constraint
         #reversing[i=1:78840], pv_curtail[i] <= sol[i] * x  ## can only curtail power which is available and not being used
         #shedding[i=1:78840], shed[i] <= load_v[i] ## can't shed load you don't have
     end)
@@ -86,6 +67,8 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
     # outcome[1:78840, :bat_chg] = getvalue(bat_chg[1:78840])
     # outcome[1:78840, :shed_frac] = fill(shed_amt,78840)
     # outcome[1:78840, :id] = fill(case * sol_id,78840)
-     
-    return result
+    
+    #output
+    save(DIR * OUT * "\\_500pv_100stor\\results_" * i * ".csv", result)
+    return
 end
