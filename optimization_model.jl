@@ -3,7 +3,7 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
  
     # set-up data collection objects
     #result = DataFrame([Float64,Float64,Float64,String,Float64,Float64, Float64, Float64,Float64], [:pv,:storage,:shed_frac,:id, :load, :ann_cost, :solar_tot,:pv_curtail,:shed_tot], 1)
-    result = DataFrame([Float64,Float64,String, Float64], [:pv,:storage,:id, :pv_curtail], 1)
+    result = DataFrame([Float64,Float64,Float64], [:pv,:storage,:pv_curtail], 1)
     #outcome = DataFrame([Float64, Float64, Float64,Float64, Float64, Float64, Float64, Float64, String], [:sol,:load,:power_in,:power_out,:shed,:pv_curtail,:bat_chg,:shed_frac,:id], 78840)
        
     #select geography location
@@ -50,7 +50,7 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
     result[1, :pv] = getvalue(x)
     result[1, :storage] = getvalue(y)
     #result[1, :shed_frac] = shed_amt
-    result[1, :id] = string(shed_amt) * "_" * case * sol_id 
+    #result[1, :id] = string(LOAD_SHED) * "_" * case * sol_id 
     #result[1, :load] = tot_load
     #result[1, :ann_cost] = getobjectivevalue(m)
     #result[1, :solar_tot] = getvalue(x) * sum(sol[i] for i in 1:78840)
@@ -68,7 +68,7 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
     # outcome[1:78840, :shed_frac] = fill(shed_amt,78840)
     # outcome[1:78840, :id] = fill(case * sol_id,78840)
     
+    gc()
     #output
-    save(DIR * OUT * "\\_500pv_100stor\\results_" * i * ".csv", result)
-    return
+    save(DIR * OUT * "\\500pv_100stor\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
 end
