@@ -10,11 +10,11 @@ rm(list = ls())
 
 # Packages
 library(pacman)
-p_load(magrittr, dplyr, stringr, rjson, maps,maptools, spatstat,rgeos, broom, data.table)
+p_load(magrittr, dplyr, stringr, rjson, maps,maptools, spatstat,rgeos, broom, data.table, tidyr)
 
 # Set working directory
 DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
-OUT <- "in\\res_solar"
+OUT <- "out\\"
 IN <-  "in\\"
 LD<- "LOW"
 
@@ -135,7 +135,8 @@ for (i in 1:nrow(list)) {
 }
 
 ## save rds files as csvs
-DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+DIR2 <- "C:\\Users\\Will\\Desktop\\data\\"
 IN <-  "in\\"
 
 list <- list.files(paste0(DIR,IN,"all_data\\R files"))
@@ -178,17 +179,19 @@ write.csv(list,paste0(DIR, IN,"optimization_list_energy.csv"))
 ##########################################################
 ## IV. Compile results file ##############################
 ##########################################################
+#DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+DIR2 <- "C:\\Users\\Will\\Desktop\\data\\Analysis\\"
 
-
-
-list <- list.files(paste0(DIR,OUT,"500pv_100stor\\"))
+list <- list.files(paste0(DIR2,OUT,"500pv_100stor\\"))
 results <- data.frame()
 
 for (i in 1:length(list)) {
   
-  out <- read.csv(paste0(DIR, IN,"500pv_100stor\\",list[i]))
-  out$case <- gsub(".*[_]([^.]+)[.].*", "\\1", list[i])
+  out <- read.csv(paste0(DIR2, OUT,"500pv_100stor\\",list[i]))
+  out$id <- substr(list[i],1,nchar(list[i]) - 4)
+  out <- out %>% separate(id, c("remove","reliability","case","county","state"), "_")
+  out$remove <- NULL
   results <- rbind(results,out)
 }
 
-write.csv(out,paste0(DIR, IN,"all_data\\",list[i],".csv"))
+write.csv(results,paste0(DIR2, OUT,"500pv_100stor_LOW.csv"))
