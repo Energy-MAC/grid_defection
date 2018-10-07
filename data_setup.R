@@ -174,3 +174,21 @@ list$med_energy <- med
 list$high_energy <- high
 
 write.csv(list,paste0(DIR, IN,"optimization_list_energy.csv"))
+
+##########################################################
+## IV. Compile results file ##############################
+##########################################################
+
+
+
+list <- list.files(paste0(DIR,OUT,"500pv_100stor\\"))
+results <- data.frame()
+
+for (i in 1:length(list)) {
+  
+  out <- read.csv(paste0(DIR, IN,"500pv_100stor\\",list[i]))
+  out$case <- gsub(".*[_]([^.]+)[.].*", "\\1", list[i])
+  results <- rbind(results,out)
+}
+
+write.csv(out,paste0(DIR, IN,"all_data\\",list[i],".csv"))
