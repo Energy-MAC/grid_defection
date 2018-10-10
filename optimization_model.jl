@@ -1,5 +1,5 @@
 ## wrtie optimization function
-function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RATE, INV_COST, INV_RATE, DIR, INPUT, OUT, i)
+function solar_opt(ID_G, i)
  
     # set-up data collection objects
     #result = DataFrame([Float64,Float64,Float64,String,Float64,Float64, Float64, Float64,Float64], [:pv,:storage,:shed_frac,:id, :load, :ann_cost, :solar_tot,:pv_curtail,:shed_tot], 1)
@@ -7,7 +7,17 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
     #outcome = DataFrame([Float64, Float64, Float64,Float64, Float64, Float64, Float64, Float64, String], [:sol,:load,:power_in,:power_out,:shed,:pv_curtail,:bat_chg,:shed_frac,:id], 78840)
        
     #select geography location
-    sol_id = (ID_G[i,3]*"_"*ID_G[i,4])
+    g = ceil(Int, i/3) 
+    sol_id = (ID_G[g,3]*"_"*ID_G[g,4])
+
+    #select load case
+    if i % 3 == 1 
+        case = "BASE_"
+    elseif i % 3 == 2
+        case = "LOW_"
+    else 
+        case = "HIGH_"
+    end
 
     # Load in solar and load data
     data = load(DIR * INPUT * "\\all_data\\" * case * sol_id * ".csv")
@@ -15,10 +25,9 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
     sol = data[:,5]
     load_v = data[:,6]
     tot_load = sum(load_v)
-    max_load = maximum(load_v)
 
     # Set-up optimization model
-    m = Model(solver = GurobiSolver(OutputFlag=0)) # ClpSolver() specify the solver, pass along to model
+    m = Model(solver = GurobiSolver(OutputFlag=0)) 
 
     @variables m begin
         x >= 0. ## solar capacity
@@ -67,8 +76,7 @@ function solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RAT
     # outcome[1:78840, :bat_chg] = getvalue(bat_chg[1:78840])
     # outcome[1:78840, :shed_frac] = fill(shed_amt,78840)
     # outcome[1:78840, :id] = fill(case * sol_id,78840)
-    
-    gc()
+    GC.gc()
     #output
-    save(DIR * OUT * "\\500pv_100stor\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
+    save(DIR * OUT * "\\3000pv_450stor\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
 end

@@ -2,6 +2,8 @@
 # cd("C:\\Users\\wgorman\\Desktop\\grid_defection\\")
 # cd("C:\\Users\\Will\\Desktop\\grid_defection\\")
 ## set up inputs
+using Distributed
+
 addprocs()
 
 @everywhere using JuMP, DataFrames, Gurobi, FileIO, TextParse, CSVFiles
@@ -15,10 +17,9 @@ addprocs()
 
 ##### CREATE MODEL RUN ######
 #Set Case
-@everywhere BAT_COST = 100 # $/kWh
-@everywhere PV_COST = 500 # $/kW
+@everywhere BAT_COST = 450 # $/kWh
+@everywhere PV_COST = 3000 # $/kW
 @everywhere LOAD_SHED = 0
-@everywhere case = "BASE_" # "LOW_" # "HIGH_"
 
 # Set constants
 @everywhere INV_COST = 150 # $/kW
@@ -39,7 +40,8 @@ addprocs()
 @everywhere include("optimization_model.jl")
 
 # Create parallelization
-time = @time pmap(1:nrow(ID_G)) do i 
-    solar_opt(ID_G, LOAD_SHED, BAT_COST, BAT_RATE, BAT_EFF, PV_COST, PV_RATE, INV_COST, INV_RATE, DIR, INPUT, OUT, i) 
-    gc()
+time = @time pmap(1:(nrow(ID_G)*3)) do i 
+    solar_opt(ID_G, i) 
+    print(i)
+    GC.gc()
 end
