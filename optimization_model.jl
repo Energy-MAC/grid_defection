@@ -78,5 +78,5 @@ function solar_opt(ID_G, i)
     # outcome[1:78840, :id] = fill(case * sol_id,78840)
     GC.gc()
     #output
-    save(DIR * OUT * "\\3000pv_450stor\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
+    save(DIR * OUT * "\\1500pv_200stor\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
 end
