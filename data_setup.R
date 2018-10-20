@@ -194,4 +194,4 @@ for (i in 1:length(list)) {
   results <- rbind(results,out)
 }
 
-write.csv(results,paste0(DIR2, OUT,"500pv_100stor_LOW.csv"))
+write.csv(results,paste0(DIR2, OUT,"500pv_100stor.csv"))

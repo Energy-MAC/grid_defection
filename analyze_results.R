@@ -10,198 +10,179 @@ rm(list = ls())
 
 # Packages
 library(pacman)
-p_load(magrittr, dplyr, stringr, ggplot2, ggforce, data.table,rjson, maps,maptools,
-       spatstat,rgeos, broom)
+p_load(magrittr, dplyr, stringr, ggplot2, usmap, RColorBrewer, data.table, scales)
 
 # Set working directory
 #DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\2018Spring\\Comp Programing in Econ\\Project\\"
-DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\"
+DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
 OUT = "out"
 INPUT = "in"
 ##########################################################
 ## I. read in output data ################################
 ##########################################################
+#rates
+base_rates_100 <- fread(paste0(DIR,OUT,"\\ann_bill_100.csv"))
+base_rates_100$reliability <- 0
+base_rates_95 <- fread(paste0(DIR,OUT,"\\ann_bill_100.csv"))
+base_rates_95$reliability <- 0.05
 
-sizing <- fread(paste0(DIR,OUT,"\\results_v5.csv"))
-hourly <- fread(paste0(DIR,OUT,"\\outcome_v5.csv"), nrows = 438000)
+base_rates <- rbind(base_rates_100, base_rates_95)
 
+rm(base_rates_100,base_rates_95)
 
-##########################################################
-## I. data checking ################################
-##########################################################
-sizing$check <- sizing$load - sizing$solar_tot
-sizing$energy_cost <- sizing$load * 0.12
-sizing$pv_cost <- sizing$pv * 3000 * 0.07 / sizing$solar_tot
-sizing$shed_tot <- as.numeric(sizing$shed_tot)
+#solar/storage systems
+sizing <- fread(paste0(DIR,OUT,"\\500pv_100stor.csv"))
+fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
 
-##########################################################
-## I. Simple graphs ######################################
-##########################################################
-sizing$id <- as.numeric(sizing$id)
-jpeg(filename = paste0(DIR,OUT,"\\images\\sol_size.jpg"), width = 950, height = 480)
-ggplot(data=sizing, aes(shed_frac,pv)) + geom_point(aes(color=id)) +
-  xlab(label = "% energy from the grid") + ylab(label = "PV system size (kW)") +
-  ggtitle(label = "Figure 3: Solar sizing under increasing reliability constraints")
-dev.off()
-
-jpeg(filename = paste0(DIR,OUT,"\\images\\stor_size.jpg"), width = 950, height = 480)
-ggplot(data=sizing, aes(shed_frac,storage)) + geom_point(aes(color=id)) +
-  xlab(label = "% energy from the grid") + ylab(label = "storage system size (kWh)") +
-  ggtitle(label = "Figure 4: Storage sizing under increasing reliability constraints")
-dev.off()
-
-max <- sizing %>% group_by(shed_frac) %>% 
-  summarize(sol_max = max(pv),sol_min = min(pv),stor_max = max(storage),
-             stor_min = min(storage))
 
 ##########################################################
-## I. Geospatial Analysis ################################
+## II. Simple graphs ######################################
 ##########################################################
 
-#define functions
-latlong2county <- function(pointsDF, string) {
-  # Prepare SpatialPolygons object with one SpatialPolygon
-  # per state (plus DC, minus HI & AK)
-  states <- map(string, fill=TRUE, col="transparent", plot=FALSE)
-  IDs <- sapply(strsplit(states$names, ":"), function(x) x[1])
-  states_sp <- map2SpatialPolygons(states, IDs=IDs,
-                                   proj4string=CRS("+proj=longlat +datum=WGS84"))
-  
-  # Convert pointsDF to a SpatialPoints object 
-  pointsSP <- SpatialPoints(pointsDF, 
-                            proj4string=CRS("+proj=longlat +datum=WGS84"))
-  
-  # Use 'over' to get _indices_ of the Polygons object containing each point 
-  indices <- over(pointsSP, states_sp)
-  
-  # Return the state names of the Polygons object containing each point
-  stateNames <- sapply(states_sp@polygons, function(x) x@ID)
-  stateNames[indices]
+##plotting reliability of 0
+ggplot(data=sizing[reliability=="0"], aes(pv,storage)) + geom_point(aes(color=case)) +
+  xlab(label = "Solar size (kW)") + ylab(label = "Storage size (kWh)") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold")) + 
+  guides(colour = guide_legend(override.aes = list(size=10))) +
+  scale_x_continuous(breaks=seq(0,450,50), limits=c(0,450)) + 
+  scale_y_continuous(breaks=seq(0,2000,500), limits=c(0,2000)) 
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\sizing_reliability_0.jpg"))
+
+##plotting reliability of 0.05
+ggplot(data=sizing[reliability=="0.05"], aes(pv,storage)) + geom_point(aes(color=case)) +
+  xlab(label = "Solar size (kW)") + ylab(label = "Storage size (kWh)") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold")) + 
+  guides(colour = guide_legend(override.aes = list(size=10))) +
+  scale_x_continuous(breaks=seq(0,450,50), limits=c(0,450)) + 
+  scale_y_continuous(breaks=seq(0,2000,500), limits=c(0,2000)) 
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\sizing_reliability_0.05.jpg"))
+
+##average stats (by load)
+
+l_stats <- sizing %>% group_by(case) %>% summarize(max_pv = max(pv),
+                                                   min_pv = min(pv),
+                                                   max_stor = max(storage),
+                                                   min_stor = min(storage))
+
+##average stats (by reliability)
+r_stats <- sizing %>% group_by(reliability) %>% summarize(mean_sol = mean(pv),
+                                                   mean_pv = mean(storage))
+
+##########################################################
+## III. Geospatial Analysis of rates #####################
+##########################################################
+
+rates <- c("r_curr_fixed","r_curr_variable", "r_1_fixed","r_0_variable")
+
+for (index in seq(1, 4, 2)){
+
+name <- c("fips",rates[index]) 
+
+plot_usmap(data = select(base_rates,one_of(c("fips", rates[index]))), 
+           values = rates[index], regions = "counties") + 
+  scale_fill_distiller(palette = "Spectral", limits=c(-70,2400), na.value="black") + 
+    theme(legend.position = c(0.89,0.2),legend.text=element_text(size=15),
+          legend.title=element_text(size=15,face="bold"),
+          plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
+  labs(fill="Annual fixed rate ($)")
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\",rates[index],".jpg"))
+
+plot_usmap(data = select(base_rates,one_of(c("fips", rates[index+1]))), 
+           values = rates[index+1], regions = "counties") + 
+  scale_fill_distiller(palette = "Spectral", limits=c(2.5,30), na.value="black") + 
+  theme(legend.position = c(0.89,0.2),legend.text=element_text(size=15),
+        legend.title=element_text(size=15,face="bold"),
+        plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
+  labs(fill="Variable rate \n (cent/kWh)")
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\",rates[index+1],".jpg"))
+
 }
 
-##load in lat long for tmy3
-tmy_data <- fromJSON(file = paste0(DIR,INPUT,"\\tmy3_lat_lng.json"))
-names <- data.frame(names(tmy_data))
-tmy_coor <- data.frame(matrix(unlist(tmy_data), nrow = 1020, byrow=T))
-tmy_coor <-cbind(names, tmy_coor)
-colnames(tmy_coor) <- c("id", "lat","long")
-coor <- tmy_coor[,c(3,2)]
-tmy_coor$loc <- latlong2county(coor, "county")
-data <- str_split_fixed(tmy_coor$loc,",",2)
-colnames(data) <- c("state","county")
-tmy_coor <- cbind(tmy_coor, data)
-rm(names, tmy_data, data, coor)
-
-#merge in lat long
-sizing$id <- as.factor(sizing$id)
-sizing <- merge(sizing, tmy_coor, by = "id")
-sizing <- subset(sizing, state != "")
-
-#create averages by county
-avg <- sizing %>% group_by(county, state, shed_frac) %>% 
-  summarize(pv = mean(pv), storage = mean(storage), num = n()) %>% as.data.frame()
-colnames(avg)[1] <- "subregion"
-colnames(avg)[2] <- "region"
-
-#set initial map
-usa <- tidy(map('county', fill = TRUE))
-
-# Plot the tidied shapefile
-jpeg(filename = paste0(DIR,OUT,"\\images\\sol_1.jpg"), width = 950, height = 480)
-usa2 <- arrange(arrange(merge(usa,filter(avg, shed_frac==0.5), by=c("subregion","region"), all=T), order), group)
-ggplot(data = usa2, aes(x = long, y = lat, group = group)) +
-  geom_polygon(aes(fill = pv), color = "black", size=0.07) +
-  geom_path(size = 0.3) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  ggtitle("Solar Variation with 50% grid energy") +
-  coord_map()
-dev.off()
-
-jpeg(filename = paste0(DIR,OUT,"\\images\\sol_2.jpg"), width = 950, height = 480)
-usa2 <- arrange(arrange(merge(usa,filter(avg, shed_frac==0.1), by=c("subregion","region"), all=T), order), group)
-ggplot(data = usa2, aes(x = long, y = lat, group = group)) +
-  geom_polygon(aes(fill = pv), color = "black", size=0.07) +
-  geom_path(size = 0.3) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  ggtitle("Solar Variation with 10% grid energy") +
-  coord_map()
-dev.off()
-
-jpeg(filename = paste0(DIR,OUT,"\\images\\sol_3.jpg"), width = 950, height = 480)
-usa2 <- arrange(arrange(merge(usa,filter(avg, shed_frac==0.00001), by=c("subregion","region"), all=T), order), group)
-ggplot(data = usa2, aes(x = long, y = lat, group = group)) +
-  geom_polygon(aes(fill = pv), color = "black", size=0.07) +
-  geom_path(size = 0.3) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  ggtitle("Solar Variation with 0% grid energy") +
-  coord_map()
-dev.off()
-
-##storage ones
-jpeg(filename = paste0(DIR,OUT,"\\images\\stor_1.jpg"), width = 950, height = 480)
-usa2 <- arrange(arrange(merge(usa,filter(avg, shed_frac==0.5), by=c("subregion","region"), all=T), order), group)
-ggplot(data = usa2, aes(x = long, y = lat, group = group)) +
-  geom_polygon(aes(fill = storage), color = "black", size=0.07) +
-  geom_path(size = 0.3) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  ggtitle("Storage Variation with 50% grid energy") +
-  coord_map()
-dev.off()
-
-jpeg(filename = paste0(DIR,OUT,"\\images\\stor_2.jpg"), width = 950, height = 480)
-usa2 <- arrange(arrange(merge(usa,filter(avg, shed_frac==0.1), by=c("subregion","region"), all=T), order), group)
-ggplot(data = usa2, aes(x = long, y = lat, group = group)) +
-  geom_polygon(aes(fill = storage), color = "black", size=0.07) +
-  geom_path(size = 0.3) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  ggtitle("Storage Variation with 10% grid energy") +
-  coord_map()
-dev.off()
-
-jpeg(filename = paste0(DIR,OUT,"\\images\\stor_3.jpg"), width = 950, height = 480)
-usa2 <- arrange(arrange(merge(usa,filter(avg, shed_frac==0.00001), by=c("subregion","region"), all=T), order), group)
-ggplot(data = usa2, aes(x = long, y = lat, group = group)) +
-  geom_polygon(aes(fill = storage), color = "black", size=0.07) +
-  geom_path(size = 0.3) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  ggtitle("Storage Variation with 0% grid energy") +
-  coord_map()
-dev.off()
-
-
 ##########################################################
-## I. plot pdf of results ################################
+## III. Geospatial Analysis of sizes #####################
 ##########################################################
+#Set costs
+BAT_COST = 200 # $/kWh
+PV_COST = 1000 # $/kW
 
-##get pages
-p <- ggplot(sizing, aes(x = shed_frac, y = pv)) +
-  geom_point(aes(x = shed_frac, y = pv), col = 1) +
-  geom_point(aes(x = shed_frac, y = storage), col = 2) +
-  facet_wrap_paginate(~id, ncol = 4, nrow = 4, page = 1)
-print(p)
+#annual rates
+int_rate = 0.07 # percentage interest rate
+bat_life = 20 # years
+sol_life = 25 # years
 
-length <- ceiling(length(unique(sizing$id))/16)
+BAT_RATE = int_rate / (1 - (1+int_rate)^(-bat_life))
+PV_RATE = int_rate / (1 - (1+int_rate)^(-sol_life))
 
-#plotting
-pdf(paste0(DIR,OUT,'\\multiple_plot.pdf'), width = 18, height = 11)
+sizing$cost <- sizing$pv * PV_COST * PV_RATE + sizing$storage * BAT_COST * BAT_RATE
+sizing$reliability <- as.numeric(sizing$reliability)
 
-for (index in 1:length){
+sizes <- merge(sizing, fips, by=c("county","state"))
+
+##plotting system costs
+#######################
+loads <- c("LOW","BASE","HIGH")
+rels <- c(0,0.05)
+
+for (index in 1:length(loads)){
   
-  ##PV
-  print(ggplot(sizing, aes(x = shed_frac, y = pv)) +
-          geom_point(col=1) +
-          facet_wrap_paginate(~id, ncol = 4, nrow = 4, page = index)) 
-  
-  ##storage
-  print(ggplot(sizing, aes(x = shed_frac, y = storage)) +
-          geom_point(col=2) +
-          facet_wrap_paginate(~id, ncol = 4, nrow = 4, page = index)) 
-  
+  for(rel in 1:length(rels)){
+    
+      size <- subset(sizes, case == loads[index] & reliability == rels[rel])
+      
+      plot_usmap(data = size[,c("fips","cost")], values = "cost", regions = "counties") + 
+        scale_fill_distiller(palette = "Spectral", limits=c(0,20000), oob=squish, na.value="black",
+                             labels = c("0","5000","10000","15000",bquote({}>=20000))) +
+        labs(fill="Annual cost ($)") + 
+        theme(legend.position = c(0.89,0.2),legend.text=element_text(size=15),
+              legend.title=element_text(size=15,face="bold"),
+              plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0))
+      
+      ggsave(filename = paste0(DIR,OUT, "\\images\\syscost_",rels[rel],"_",loads[index],".jpg"))
+  }
 }
-dev.off()
+
+
+##plotting grid defection
+#######################
+
+##merge in data
+defect <- merge(base_rates, sizing[,c(5:9)], by=c("county","state","case", "reliability"), all.x = TRUE)
+
+#take differences
+defect$curr_diff <- defect$r_current - defect$cost
+defect$r1_diff <- defect$r_1 - defect$cost
+
+
+loads <- c("LOW","BASE","HIGH")
+rate <- c("r1_diff","curr_diff")
+rels <- c(0,0.05)
+
+for (index in 1:length(loads)){
+  for(rel in 1:length(rels)){
+    
+    final <- subset(defect, case == loads[index] & reliability == rels[rel])
+    
+    for (ra in 1:length(rate)){  
+      
+      plot_usmap(data = select(final,one_of(c("fips", rate[ra]))), 
+                 values = rate[ra], regions = "counties") + 
+        scale_fill_distiller(palette = "Spectral", limits=c(-2000,2000), oob=squish, na.value="black",
+                             labels = c(bquote({}<=-2000),"-1000","0","1000","2000")) + 
+        theme(legend.position = c(0.89,0.2),legend.text=element_text(size=15),
+              legend.title=element_text(size=15,face="bold"),
+              plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
+        labs(fill="Annual \n difference ($)")
+      
+
+      ggsave(filename = paste0(DIR,OUT, "\\images\\outcome_",rate[ra],"_",
+                               loads[index],"_",rels[rel],".jpg"))
+      
+    }
+  }
+}
