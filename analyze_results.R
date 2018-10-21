@@ -61,6 +61,32 @@ ggplot(data=sizing[reliability=="0.05"], aes(pv,storage)) + geom_point(aes(color
 
 ggsave(filename = paste0(DIR,OUT, "\\images\\sizing_reliability_0.05.jpg"))
 
+
+##box and whisker (solar)
+ggplot(sizing, aes(x=case, y=pv, fill=reliability)) + 
+  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Solar size (kW)") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.7,.8)) + 
+  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
+  guides(colour = guide_legend(override.aes = list(size=10))) + 
+  scale_y_continuous(breaks=seq(0,400,50), limits=c(0,400))
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\pv_sizing.jpg"))
+
+#(storage)
+ggplot(sizing, aes(x=case, y=storage, fill=reliability)) + 
+  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Storage size (kW)") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.7,.8)) +  
+  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
+  guides(colour = guide_legend(override.aes = list(size=10)))+ 
+  scale_y_continuous(breaks=seq(0,700,100), limits=c(0,700)) 
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\storage_sizing.jpg"))
+
+
 ##average stats (by load)
 
 l_stats <- sizing %>% group_by(case) %>% summarize(max_pv = max(pv),
@@ -186,3 +212,26 @@ for (index in 1:length(loads)){
     }
   }
 }
+
+## density plots
+rate <- c("r1_diff","curr_diff")
+rels <- c(0,0.05)
+
+for (index in 1:length(rate)){
+  for(rel in 1:length(rels)){
+    
+    ggplot(defect[reliability==rels[rel]], aes_string(rate[index], colour="case", fill="case")) + 
+      geom_density(alpha=0.55) + geom_vline(xintercept=0) +
+      xlab(label = "Cost utility electricity - cost solar/stor system") + ylab(label = "Density") + 
+      theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+            legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+            legend.position = c(0.2,0.8)) + 
+      guides(colour = guide_legend(override.aes = list(size=10))) + 
+      scale_x_continuous(limits=c(-30000,1000))
+    
+    ggsave(filename = paste0(paste0(DIR,OUT, "\\images\\density_",rate[index],"_",rels[rel],".jpg")))
+    
+  }
+}
+
+#geom_text(size = 7, aes(x=-5000, label="Defection line", y = 0.00075), colour="black") +
