@@ -4,7 +4,7 @@
 ## set up inputs
 using Distributed
 
-addprocs(4)
+addprocs(3)
 
 @everywhere using JuMP, DataFrames, Gurobi, FileIO, TextParse, CSVFiles
 
@@ -18,7 +18,7 @@ addprocs(4)
 ##### CREATE MODEL RUN ######
 #Set Case
 @everywhere BAT_COST = 200 # $/kWh
-@everywhere PV_COST = 1500 # $/kW
+@everywhere PV_COST = 1000 # $/kW
 @everywhere LOAD_SHED = 0.05
 
 # Set constants

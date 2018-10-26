@@ -136,7 +136,7 @@ for (i in 1:nrow(list)) {
 
 ## save rds files as csvs
 DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
-DIR2 <- "C:\\Users\\Will\\Desktop\\data\\"
+#DIR2 <- "C:\\Users\\Will\\Desktop\\data\\"
 IN <-  "in\\"
 
 list <- list.files(paste0(DIR,IN,"all_data\\R files"))
@@ -179,19 +179,21 @@ write.csv(list,paste0(DIR, IN,"optimization_list_energy.csv"))
 ##########################################################
 ## IV. Compile results file ##############################
 ##########################################################
-#DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
-DIR2 <- "C:\\Users\\Will\\Desktop\\data\\Analysis\\"
+DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+#DIR2 <- "C:\\Users\\Will\\Desktop\\data\\Analysis\\"
 
-list <- list.files(paste0(DIR2,OUT,"500pv_100stor\\"))
+folder <- "3000pv_450stor"
+
+list <- list.files(paste0(DIR2,OUT,folder,"\\"))
 results <- data.frame()
 
 for (i in 1:length(list)) {
   
-  out <- read.csv(paste0(DIR2, OUT,"500pv_100stor\\",list[i]))
+  out <- read.csv(paste0(DIR2, OUT,folder,"\\",list[i]))
   out$id <- substr(list[i],1,nchar(list[i]) - 4)
   out <- out %>% separate(id, c("remove","reliability","case","county","state"), "_")
   out$remove <- NULL
   results <- rbind(results,out)
 }
 
-write.csv(results,paste0(DIR2, OUT,"500pv_100stor.csv"))
+write.csv(results,paste0(DIR2, OUT,folder,".csv"))

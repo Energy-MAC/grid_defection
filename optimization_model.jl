@@ -4,7 +4,7 @@ function solar_opt(ID_G, i)
     # set-up data collection objects
     #result = DataFrame([Float64,Float64,Float64,String,Float64,Float64, Float64, Float64,Float64], [:pv,:storage,:shed_frac,:id, :load, :ann_cost, :solar_tot,:pv_curtail,:shed_tot], 1)
     result = DataFrame([Float64,Float64,Float64], [:pv,:storage,:pv_curtail], 1)
-    #outcome = DataFrame([Float64, Float64, Float64,Float64, Float64, Float64, Float64, Float64, String], [:sol,:load,:power_in,:power_out,:shed,:pv_curtail,:bat_chg,:shed_frac,:id], 78840)
+    outcome = DataFrame([Float64, Float64, Float64,Float64, Float64, Float64, Float64], [:sol,:load,:power_in,:power_out,:shed,:pv_curtail,:bat_chg], 78840)
        
     #select geography location
     g = ceil(Int, i/3) 
@@ -25,6 +25,8 @@ function solar_opt(ID_G, i)
     sol = data[:,5]
     load_v = data[:,6]
     tot_load = sum(load_v)
+    min_l = minimum(load_v)
+    min_l = min(min_l,0.3)
 
     # Set-up optimization model
     m = Model(solver = GurobiSolver(OutputFlag=0)) 
@@ -49,6 +51,7 @@ function solar_opt(ID_G, i)
         sum(shed[i] for i in 1:78840) <= tot_load * LOAD_SHED ## reliability constraint
         #reversing[i=1:78840], pv_curtail[i] <= sol[i] * x  ## can only curtail power which is available and not being used
         #shedding[i=1:78840], shed[i] <= load_v[i] ## can't shed load you don't have
+        min_load[i=1:78840], load_v[i] - shed[i] >= min_l ## always have a base load on
     end)
 
     @objective(m, Min, x * PV_COST * PV_RATE + y * BAT_COST * BAT_RATE + sum(power_out[i] for i in 1:78840) * 0.001) 
@@ -67,16 +70,17 @@ function solar_opt(ID_G, i)
     #result[1, :shed_tot] = sum(getvalue(shed[i]) for i in 1:78840)
     
     #optimization results
-    # outcome[1:78840, :sol] = sol * getvalue(x)
-    # outcome[1:78840, :load] = load_v
-    # outcome[1:78840, :power_in] = getvalue(power_in[1:78840])
-    # outcome[1:78840, :power_out] = getvalue(power_out[1:78840])
-    # outcome[1:78840, :shed] = getvalue(shed)
-    # outcome[1:78840, :pv_curtail] = getvalue(pv_curtail)
-    # outcome[1:78840, :bat_chg] = getvalue(bat_chg[1:78840])
-    # outcome[1:78840, :shed_frac] = fill(shed_amt,78840)
-    # outcome[1:78840, :id] = fill(case * sol_id,78840)
+     outcome[1:78840, :sol] = sol * getvalue(x)
+     outcome[1:78840, :load] = load_v
+     outcome[1:78840, :power_in] = getvalue(power_in[1:78840])
+     outcome[1:78840, :power_out] = getvalue(power_out[1:78840])
+     outcome[1:78840, :shed] = getvalue(shed[1:78840])
+     outcome[1:78840, :pv_curtail] = getvalue(pv_curtail)
+     outcome[1:78840, :bat_chg] = getvalue(bat_chg[1:78840])
+     #outcome[1:78840, :shed_frac] = fill(shed_amt,78840)
+     #outcome[1:78840, :id] = fill(case * sol_id,78840)
     GC.gc()
     #output
-    save(DIR * OUT * "\\1500pv_200stor\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
+    save(DIR * OUT * "\\1000pv_200stor\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
+    save(DIR * OUT * "\\1000pv_200stor\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
 end
