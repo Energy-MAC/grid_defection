@@ -321,11 +321,11 @@ collect <- vector("list",length(list))
 for (i in 1:length(list)) {
   
   #get tmy data
-  data <- data.frame(readRDS(paste0(DIR,IN,"\\all_data\\BASE_", list[i,3],"_",list[i,4])))
+  data <- data.frame(readRDS(paste0(DIR,IN,"\\all_data\\R files\\BASE_", list[i,3],"_",list[i,4])))
 
   #subset data of interest
-  values <- tmy[,c("gen","load","month","year")]
-  values$id <- list[i,10]
+  values <- data[,c("gen","load","month","year")]
+  values$id <- as.numeric(list[i,10])
   
   #store values
   collect[[i]] <- values
@@ -337,6 +337,7 @@ load_sol <- do.call(rbind, collect)
 
 #merge on tmy_dates information
 dates <- readRDS(paste0(DIR,OUT,"\\tmy_dates"))
+dates$month <- as.numeric(dates$month)
 
 load_sol <- merge(load_sol, dates, by = "id", all.x=TRUE)
                  

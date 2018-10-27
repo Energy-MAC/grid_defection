@@ -34,10 +34,17 @@ rm(base_rates_100,base_rates_95)
 sizing <- fread(paste0(DIR,OUT,"\\500pv_100stor.csv"))
 fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
 
+#alternative sizes
+sizing_1 <- fread(paste0(DIR,OUT,"\\1500pv_200stor.csv"))
+
 
 ##########################################################
-## II. Simple graphs ######################################
+## II. Simple graphs #####################################
 ##########################################################
+sizing$ratio <- sizing$storage/sizing$pv
+test <- reshape(sizing[,c(2,3,5:9)], idvar = c("case","county","state"), 
+                timevar="reliability", v.names=c("ratio","pv","storage"), direction="wide")
+test$ratio_diff <- test$ratio.0.05 - test$ratio.0
 
 ##plotting reliability of 0
 ggplot(data=sizing[reliability=="0"], aes(pv,storage)) + geom_point(aes(color=case)) +
@@ -61,6 +68,15 @@ ggplot(data=sizing[reliability=="0.05"], aes(pv,storage)) + geom_point(aes(color
 
 ggsave(filename = paste0(DIR,OUT, "\\images\\sizing_reliability_0.05.jpg"))
 
+##plot ratios
+ggplot(test, aes(x=case, y=ratio_diff)) + 
+  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Solar size (kW)") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.7,.8)) + 
+  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
+  guides(colour = guide_legend(override.aes = list(size=10))) #+ 
+  #scale_y_continuous(breaks=seq(0,400,50), limits=c(0,400))
 
 ##box and whisker (solar)
 ggplot(sizing, aes(x=case, y=pv, fill=reliability)) + 
@@ -97,6 +113,37 @@ l_stats <- sizing %>% group_by(case) %>% summarize(max_pv = max(pv),
 ##average stats (by reliability)
 r_stats <- sizing %>% group_by(reliability) %>% summarize(mean_sol = mean(pv),
                                                    mean_pv = mean(storage))
+
+
+##########################################################
+## III. Sizes vs. cost assumptions #######################
+##########################################################
+comparison <- merge(sizing,sizing_1, by = c("reliability","case","county","state"))
+comparison$pv_diff <- comparison$pv.x - comparison$pv.y
+comparison$stor_diff <- comparison$storage.x - comparison$storage.y
+
+##box and whisker (solar difference)
+ggplot(comparison, aes(x=case, y=pv_diff, fill=reliability)) + 
+  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Solar size (kW)") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.7,.8)) + 
+  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
+  guides(colour = guide_legend(override.aes = list(size=10)))+ 
+  scale_y_continuous(breaks=seq(0,50,10), limits=c(0,50))
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\pv_sizing.jpg"))
+
+#(storage difference)
+ggplot(comparison, aes(x=case, y=stor_diff, fill=reliability)) + 
+  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Storage size (kW)") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.7,.8)) +  
+  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
+  guides(colour = guide_legend(override.aes = list(size=10))) 
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\storage_sizing.jpg"))
 
 ##########################################################
 ## III. Geospatial Analysis of rates #####################
@@ -234,4 +281,4 @@ for (index in 1:length(rate)){
   }
 }
 
-#geom_text(size = 7, aes(x=-5000, label="Defection line", y = 0.00075), colour="black") +
+

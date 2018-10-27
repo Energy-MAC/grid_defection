@@ -10,7 +10,7 @@ rm(list = ls())
 
 # Packages
 library(pacman)
-p_load(magrittr, dplyr, stringr, rjson, maps,maptools, spatstat,rgeos, broom, data.table, tidyr)
+p_load(magrittr, dplyr, stringr, rjson, maps,maptools, spatstat,rgeos, broom, data.table, tidyr, lubridate)
 
 # Set working directory
 DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
@@ -102,24 +102,14 @@ for (i in 1:nrow(list)) {
   sol <- fread(paste0(DIR,IN,"sol_data\\", list[i,3],"_", list[i,4],".csv"))
   
   #convert local to time element
-  sol$time <- as.POSIXct(strptime(sol$local_time_stor, "%Y-%m-%d %H:%M:%S"))
+  sol$time <- ymd_hms(sol$local_time_stor)
   sol$year <- format(sol$time, "%Y")
   sol$month <- format(sol$time, "%m")
   sol$day <- format(sol$time, "%d")
   sol$hour <- format(sol$time, "%H")
   sol <- sol[,c(5,6,7,8,3)]
-  sol <- sol[complete.cases(sol), ]
   
-  #create appended table
-  year <- c("2008","2009","2010","2011","2012","2013","2014","2015","2016")
-  month <- c("03","03","03","03","03","03","03","03","03")
-  day <- c("09","08","14","13","11","10","09","08","13")
-  hour <- c("02","02","02","02","02","02","02","02","02")
-  generation <- c(0,0,0,0,0,0,0,0,0)
-  add <- data.frame(year,month,day,hour,generation)
-  sol<- rbind(sol,add)
-  
-  #drop feb 29 data (maybe by dropping duplicates)
+  #drop feb 29 data (maybe by dropping duplicates b/c they were all marked as feb 28th data)
   sol1 <- sol %>% group_by(year,month, day, hour) %>% summarise(gen = mean(generation))
   sol1 <- data.frame(lapply(sol1, function(x) as.numeric(as.character(x))))
  
