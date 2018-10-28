@@ -10,10 +10,12 @@ rm(list = ls())
 
 # Packages
 library(pacman)
-p_load(magrittr, dplyr, stringr, rjson, maps,maptools, spatstat,rgeos, broom, data.table, tidyr, lubridate)
+p_load(magrittr, dplyr, stringr, rjson, maps,maptools, spatstat,rgeos, 
+       broom, data.table, tidyr, lubridate)
 
 # Set working directory
-DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+#DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 OUT <- "out\\"
 IN <-  "in\\"
 LD<- "LOW"
@@ -92,14 +94,15 @@ for (i in 1:nrow(list)) {
   
   #create load dataframes
   temp_low <- fread(paste0(DIR,IN,"res_load\\LOW\\", list[i,10],".csv"), col.names=c("V","load"))
-  temp_low <- do.call("rbind", replicate(9,temp_low, simplify = FALSE))
+  temp_low <- do.call("rbind", replicate(8,temp_low, simplify = FALSE))
   temp_med <- fread(paste0(DIR,IN,"res_load\\BASE\\", list[i,10],".csv"), col.names=c("V","load"))
-  temp_med <- do.call("rbind", replicate(9,temp_med, simplify = FALSE))
+  temp_med <- do.call("rbind", replicate(8,temp_med, simplify = FALSE))
   temp_high <- fread(paste0(DIR,IN,"res_load\\HIGH\\", list[i,10],".csv"), col.names=c("V","load"))
-  temp_high <- do.call("rbind", replicate(9,temp_high, simplify = FALSE))
+  temp_high <- do.call("rbind", replicate(8,temp_high, simplify = FALSE))
   
   #create solar dataframe
-  sol <- fread(paste0(DIR,IN,"sol_data\\", list[i,3],"_", list[i,4],".csv"))
+  DIR2 <- "G:\\Team Drives\\Renewable_Profile\\Analysis\\all_dpv\\"
+  sol <- fread(paste0(DIR2,OUT,"solar_profile (1998-2005)\\", list[i,3],"_", list[i,4],".csv"))
   
   #convert local to time element
   sol$time <- ymd_hms(sol$local_time_stor)
@@ -115,13 +118,13 @@ for (i in 1:nrow(list)) {
  
   #merge columns and write table
   dt <- cbind(sol1[,c(1,2,3,5)], temp_med[,2])
-  saveRDS(dt, paste0(DIR, IN,"all_data\\BASE_", list[i,3],"_", list[i,4]))
+  saveRDS(dt, paste0(DIR, IN,"all_data_1998-2005\\BASE_", list[i,3],"_", list[i,4]))
   
   dt <- cbind(sol1[,c(1,2,3,5)], temp_high[,2])
-  saveRDS(dt, paste0(DIR, IN,"all_data\\HIGH_", list[i,3],"_", list[i,4]))
+  saveRDS(dt, paste0(DIR, IN,"all_data_1998-2005\\HIGH_", list[i,3],"_", list[i,4]))
   
   dt <- cbind(sol1[,c(1,2,3,5)], temp_low[,2])
-  saveRDS(dt, paste0(DIR, IN,"all_data\\LOW_", list[i,3],"_", list[i,4]))
+  saveRDS(dt, paste0(DIR, IN,"all_data_1998-2005\\LOW_", list[i,3],"_", list[i,4]))
 }
 
 ## save rds files as csvs

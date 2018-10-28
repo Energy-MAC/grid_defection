@@ -13,7 +13,8 @@ library(pacman)
 p_load(magrittr, dplyr, stringr, ggplot2,data.table, ggmap, usmap, mapproj)
 
 # Set working directory
-DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+#DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 OUT = "out\\"
 IN = "in\\"
 ##########################################################
@@ -321,7 +322,7 @@ collect <- vector("list",length(list))
 for (i in 1:length(list)) {
   
   #get tmy data
-  data <- data.frame(readRDS(paste0(DIR,IN,"\\all_data\\R files\\BASE_", list[i,3],"_",list[i,4])))
+  data <- data.frame(readRDS(paste0(DIR,IN,"\\all_data_1998-2005\\BASE_", list[i,3],"_",list[i,4])))
 
   #subset data of interest
   values <- data[,c("gen","load","month","year")]
@@ -336,7 +337,7 @@ for (i in 1:length(list)) {
 load_sol <- do.call(rbind, collect)
 
 #merge on tmy_dates information
-dates <- readRDS(paste0(DIR,OUT,"\\tmy_dates"))
+dates <- readRDS(paste0(DIR,IN,"\\tmy_dates"))
 dates$month <- as.numeric(dates$month)
 
 load_sol <- merge(load_sol, dates, by = "id", all.x=TRUE)
