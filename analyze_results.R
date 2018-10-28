@@ -31,16 +31,22 @@ base_rates <- rbind(base_rates_100, base_rates_95)
 rm(base_rates_100,base_rates_95)
 
 #solar/storage systems
-sizing <- fread(paste0(DIR,OUT,"\\500pv_100stor.csv"))
-fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
-
-#alternative sizes
+sizing_3 <- fread(paste0(DIR,OUT,"\\500pv_100stor.csv"))
+sizing_3$version <- "500pv_100stor"
 sizing_1 <- fread(paste0(DIR,OUT,"\\1500pv_200stor.csv"))
+sizing_1$version <- "1500pv_200stor"
+sizing_2 <- fread(paste0(DIR,OUT,"\\3000pv_450stor.csv"))
+sizing_2$version <- "3000pv_450stor"
 
+#fip codes
+fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
 
 ##########################################################
 ## II. Simple graphs #####################################
 ##########################################################
+#select analysis sample
+sizing <- sizing_3
+
 sizing$ratio <- sizing$storage/sizing$pv
 test <- reshape(sizing[,c(2,3,5:9)], idvar = c("case","county","state"), 
                 timevar="reliability", v.names=c("ratio","pv","storage"), direction="wide")
@@ -118,32 +124,19 @@ r_stats <- sizing %>% group_by(reliability) %>% summarize(mean_sol = mean(pv),
 ##########################################################
 ## III. Sizes vs. cost assumptions #######################
 ##########################################################
-comparison <- merge(sizing,sizing_1, by = c("reliability","case","county","state"))
+comparison <- merge(sizing_3,sizing_1, by = c("reliability","case","county","state"))
 comparison$pv_diff <- comparison$pv.x - comparison$pv.y
 comparison$stor_diff <- comparison$storage.x - comparison$storage.y
 
-##box and whisker (solar difference)
-ggplot(comparison, aes(x=case, y=pv_diff, fill=reliability)) + 
-  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Solar size (kW)") + 
-  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
-        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
-        legend.position = c(0.7,.8)) + 
-  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
-  guides(colour = guide_legend(override.aes = list(size=10)))+ 
-  scale_y_continuous(breaks=seq(0,50,10), limits=c(0,50))
+compiled <- rbind(sizing_3, sizing_1)
+compiled <- rbind(compiled, sizing_2)
 
-ggsave(filename = paste0(DIR,OUT, "\\images\\pv_sizing.jpg"))
+##average stats
+r_stats <- compiled %>% group_by(reliability, case, version) %>% 
+  summarize(med_sol = median(pv),med_stor = median(storage),max_sol = max(pv), max_stor = max(storage),
+            min_sol = min(pv),min_stor = min(storage))
 
-#(storage difference)
-ggplot(comparison, aes(x=case, y=stor_diff, fill=reliability)) + 
-  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Storage size (kW)") + 
-  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
-        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
-        legend.position = c(0.7,.8)) +  
-  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
-  guides(colour = guide_legend(override.aes = list(size=10))) 
-
-ggsave(filename = paste0(DIR,OUT, "\\images\\storage_sizing.jpg"))
+write.csv(r_stats,file = paste0(DIR,OUT, "\\size_cost.csv"))
 
 ##########################################################
 ## III. Geospatial Analysis of rates #####################
@@ -180,6 +173,9 @@ ggsave(filename = paste0(DIR,OUT, "\\images\\",rates[index+1],".jpg"))
 ##########################################################
 ## III. Geospatial Analysis of sizes #####################
 ##########################################################
+#select analysis sample
+sizing <- sizing_3
+
 #Set costs
 BAT_COST = 200 # $/kWh
 PV_COST = 1000 # $/kW
@@ -225,11 +221,18 @@ for (index in 1:length(loads)){
 #######################
 
 ##merge in data
-defect <- merge(base_rates, sizing[,c(5:9)], by=c("county","state","case", "reliability"), all.x = TRUE)
+defect <- merge(base_rates, sizing[,c(5:8,10)], by=c("county","state","case", "reliability"), all.x = TRUE)
 
 #take differences
 defect$curr_diff <- defect$r_current - defect$cost
 defect$r1_diff <- defect$r_1 - defect$cost
+defect$r0.75_diff <- defect$r_0.75 - defect$cost
+defect$r0.5_diff <- defect$r_0.5 - defect$cost
+defect$r0.25_diff <- defect$r_0.25 - defect$cost
+defect$r0_diff <- defect$r_0 - defect$cost
+
+#write to csv
+write.csv(defect,file = paste0(DIR,OUT, "\\defection.csv") )
 
 
 loads <- c("LOW","BASE","HIGH")
@@ -281,4 +284,42 @@ for (index in 1:length(rate)){
   }
 }
 
+##########################################################
+## III. Analyze load shedding ############################
+##########################################################
+DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+#DIR2 <- "C:\\Users\\Will\\Desktop\\data\\Analysis\\"
 
+folder <- "3000pv_450stor"
+
+list <- list.files(paste0(DIR2,OUT,folder,"\\"))
+results <- data.frame()
+
+for (i in 1:length(list)) {
+  
+  out <- fread(paste0(DIR2, OUT,folder,"\\",list[i]))
+  out$id <- substr(list[i],1,nchar(list[i]) - 4)
+  out <- out %>% separate(id, c("remove","reliability","case","county","state"), "_")
+  out$remove <- NULL
+  out$is_shed <- ifelse(out$shed>0,1,0)
+  
+  vector <- ifelse(out$shed>0,1,0)
+  values <- numeric(length(vector))
+  
+  for(v in 1:length(vector)) {
+    if(v==1){
+        value[v] = 0
+      }else if(vector[v]==1){
+        value[v] = value[v-1]+1
+      }else{
+        value[v] = 0
+      }
+  }
+  
+  out$count_shed <- value
+  
+  final <- out %>% group_by(reliability, case, county,state,count_shed) %>% 
+    summarize(tot = length(load))
+  
+  results <- rbind(results,final)
+}
