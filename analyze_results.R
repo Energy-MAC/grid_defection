@@ -290,9 +290,10 @@ for (index in 1:length(rate)){
 DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 #DIR2 <- "C:\\Users\\Will\\Desktop\\data\\Analysis\\"
 
-folder <- "3000pv_450stor"
+folder <- "\\1000pv_200stor"
 
 list <- list.files(paste0(DIR2,OUT,folder,"\\"))
+list <- list[lapply(list,function(x) length(grep("results",x,value=FALSE))) == 0]
 results <- data.frame()
 
 for (i in 1:length(list)) {
@@ -301,10 +302,8 @@ for (i in 1:length(list)) {
   out$id <- substr(list[i],1,nchar(list[i]) - 4)
   out <- out %>% separate(id, c("remove","reliability","case","county","state"), "_")
   out$remove <- NULL
-  out$is_shed <- ifelse(out$shed>0,1,0)
-  
   vector <- ifelse(out$shed>0,1,0)
-  values <- numeric(length(vector))
+  value <- numeric(length(vector))
   
   for(v in 1:length(vector)) {
     if(v==1){
@@ -321,5 +320,27 @@ for (i in 1:length(list)) {
   final <- out %>% group_by(reliability, case, county,state,count_shed) %>% 
     summarize(tot = length(load))
   
-  results <- rbind(results,final)
+  results <- rbind(results,as.data.frame(final))
 }
+
+write.csv(results, file = paste0(DIR2,OUT, "\\reliability_score.csv"))
+
+#trim the reliability score
+trim <- results[results$tot != 1,]
+max <- results[results$tot == 1,]
+
+max <- max %>% group_by(reliability,case,county,state) %>% summarise(count_shed = max(count_shed))
+max$tot <- 1
+
+final <- rbind(trim, as.data.frame(max))
+final <- final %>% group_by(reliability, count_shed,case) %>% summarise(tot = sum(tot))
+final <- final[final$count_shed >4,]
+
+
+ggplot(final, aes(x = count_shed, y=tot, fill=case)) + 
+  geom_bar(stat="identity")  + xlab(label = "outage length") + ylab(label = "Count") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.2,0.8)) + 
+  guides(colour = guide_legend(override.aes = list(size=10)))+ 
+  scale_x_continuous(limits=c(0,100))

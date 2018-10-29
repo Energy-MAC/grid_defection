@@ -175,9 +175,10 @@ write.csv(list,paste0(DIR, IN,"optimization_list_energy.csv"))
 DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 #DIR2 <- "C:\\Users\\Will\\Desktop\\data\\Analysis\\"
 
-folder <- "3000pv_450stor"
+folder <- "1000pv_200stor"
 
 list <- list.files(paste0(DIR2,OUT,folder,"\\"))
+list <- list[lapply(list,function(x) length(grep("outcome",x,value=FALSE))) == 0]
 results <- data.frame()
 
 for (i in 1:length(list)) {

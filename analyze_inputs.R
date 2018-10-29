@@ -316,29 +316,69 @@ saveRDS(tmy_dates,paste0(DIR,OUT, "\\tmy_dates"))
 
 ##aggregate solar/load data
 list <- fread(paste0(DIR,IN,"\\optimization_list.csv"))
-collect <- vector("list",length(list))
+
+#tmy_dates information
+dates <- readRDS(paste0(DIR,IN,"\\tmy_dates"))
+dates$month <- as.numeric(dates$month)
+
+results_0 <- data.frame()
+results_no0 <- data.frame()
 
 #aggregate solar/load data
-for (i in 1:length(list)) {
+for (i in 1:nrow(list)) {
   
-  #get tmy data
-  data <- data.frame(readRDS(paste0(DIR,IN,"\\all_data_1998-2005\\BASE_", list[i,3],"_",list[i,4])))
-
+  #get sol/stor data
+  data <- data.frame(readRDS(paste0(DIR,IN,"all_data_1998-2005\\BASE_", list[i,3],"_",list[i,4])))
+  #data$hour <- rep(1:24,2920)
+  
   #subset data of interest
   values <- data[,c("gen","load","month","year")]
   values$id <- as.numeric(list[i,10])
   
-  #store values
-  collect[[i]] <- values
+  #merging
+  load_sol <- merge(values, dates, by = c("id","month"), all.x=TRUE)
+  load_sol$match <- ifelse(load_sol$year.x == load_sol$year.y, 1,0)
   
+  
+  ##running correlations
+  final <- load_sol %>% group_by(match,id) %>% summarise(correlation = cor(gen,load),
+                                                         count = length(gen))
+  final$county <-as.character(list[i,3])
+  final$state <- as.character(list[i,4])
+  
+  #store values
+  results_0 <- rbind(results_0,as.data.frame(final))
+  
+  load_sol <- load_sol[load_sol$gen >0,]
+  ##running correlations
+  final <- load_sol %>% group_by(match,id) %>% summarise(correlation = cor(gen,load),
+                                                         count = length(gen))
+  final$county <-as.character(list[i,3])
+  final$state <- as.character(list[i,4])
+  
+  #results
+  results_no0 <- rbind(results_no0,as.data.frame(final))
 }
 
-#collect results
-load_sol <- do.call(rbind, collect)
 
-#merge on tmy_dates information
-dates <- readRDS(paste0(DIR,IN,"\\tmy_dates"))
-dates$month <- as.numeric(dates$month)
+results_0$match <- as.character(results_0$match)
+results_no0$match <- as.character(results_no0$match)
 
-load_sol <- merge(load_sol, dates, by = "id", all.x=TRUE)
-                 
+ggplot(results_0, aes(correlation, colour=match, fill=match)) + 
+  geom_density(alpha=0.55) +  xlab(label = "Correlation") + ylab(label = "Density") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.8,0.8)) + 
+  guides(colour = guide_legend(override.aes = list(size=10)))
+
+ggplot(results_no0, aes(correlation, colour=match, fill=match)) + 
+  geom_density(alpha=0.55) +  xlab(label = "Correlation") + ylab(label = "Density") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.8,0.8)) + 
+  guides(colour = guide_legend(override.aes = list(size=10)))
+
+check_0 <- results_0 %>% group_by(match) %>% summarise(correlation = mean(correlation),
+                                                       obs = sum(count))
+check_no0 <- results_no0 %>% group_by(match) %>% summarise(correlation = mean(correlation),
+                                                           obs = sum(count))            
