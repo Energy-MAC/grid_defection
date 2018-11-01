@@ -14,7 +14,8 @@ p_load(magrittr, dplyr, stringr, ggplot2, usmap, RColorBrewer, data.table, scale
 
 # Set working directory
 #DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\2018Spring\\Comp Programing in Econ\\Project\\"
-DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+#DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+DIR = "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 OUT = "out"
 INPUT = "in"
 ##########################################################
@@ -37,6 +38,8 @@ sizing_1 <- fread(paste0(DIR,OUT,"\\1500pv_200stor.csv"))
 sizing_1$version <- "1500pv_200stor"
 sizing_2 <- fread(paste0(DIR,OUT,"\\3000pv_450stor.csv"))
 sizing_2$version <- "3000pv_450stor"
+sizing_4 <- fread(paste0(DIR,OUT,"\\1000pv_200stor.csv"))
+sizing_4$version <- "1000pv_200stor"
 
 #fip codes
 fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
@@ -45,7 +48,8 @@ fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
 ## II. Simple graphs #####################################
 ##########################################################
 #select analysis sample
-sizing <- sizing_3
+sizing <- sizing_2
+sizing$reliability <- as.factor(sizing$reliability)
 
 sizing$ratio <- sizing$storage/sizing$pv
 test <- reshape(sizing[,c(2,3,5:9)], idvar = c("case","county","state"), 
