@@ -14,8 +14,7 @@ p_load(magrittr, dplyr, stringr, ggplot2, usmap, RColorBrewer, data.table, scale
 
 # Set working directory
 #DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\2018Spring\\Comp Programing in Econ\\Project\\"
-#DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
-DIR = "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
 OUT = "out"
 INPUT = "in"
 ##########################################################
@@ -32,14 +31,15 @@ base_rates <- rbind(base_rates_100, base_rates_95)
 rm(base_rates_100,base_rates_95)
 
 #solar/storage systems
-sizing_3 <- fread(paste0(DIR,OUT,"\\500pv_100stor.csv"))
-sizing_3$version <- "500pv_100stor"
 sizing_1 <- fread(paste0(DIR,OUT,"\\1500pv_200stor.csv"))
 sizing_1$version <- "1500pv_200stor"
 sizing_2 <- fread(paste0(DIR,OUT,"\\3000pv_450stor.csv"))
 sizing_2$version <- "3000pv_450stor"
+sizing_3 <- fread(paste0(DIR,OUT,"\\500pv_100stor.csv"))
+sizing_3$version <- "500pv_100stor"
 sizing_4 <- fread(paste0(DIR,OUT,"\\1000pv_200stor.csv"))
 sizing_4$version <- "1000pv_200stor"
+
 
 #fip codes
 fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
@@ -48,8 +48,7 @@ fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
 ## II. Simple graphs #####################################
 ##########################################################
 #select analysis sample
-sizing <- sizing_2
-sizing$reliability <- as.factor(sizing$reliability)
+sizing <- sizing_3
 
 sizing$ratio <- sizing$storage/sizing$pv
 test <- reshape(sizing[,c(2,3,5:9)], idvar = c("case","county","state"), 
@@ -112,6 +111,33 @@ ggplot(sizing, aes(x=case, y=storage, fill=reliability)) +
 
 ggsave(filename = paste0(DIR,OUT, "\\images\\storage_sizing.jpg"))
 
+
+##comparing reliability difference
+merged <- merge(sizing_3[,c(2,3,5:8)], sizing_4[,c(2,3,5:8)], by =c("reliability","case","county","state"))
+merged$solar_d <- merged$pv.x - merged$pv.y
+merged$stor_d <- merged$storage.x - merged$storage.y
+
+##box and whisker (solar)
+ggplot(merged, aes(x=case, y=solar_d, fill=reliability)) + 
+  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Solar size difference (kW)") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.2,.2)) + 
+  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
+  guides(colour = guide_legend(override.aes = list(size=10))) 
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\pv_sizing_diff.jpg"))
+
+#(storage)
+ggplot(merged, aes(x=case, y=stor_d, fill=reliability)) + 
+  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Storage size difference (kW)") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.2,.2)) +  
+  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
+  guides(colour = guide_legend(override.aes = list(size=10))) 
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\storage_sizing_diff.jpg"))
 
 ##average stats (by load)
 
@@ -329,22 +355,44 @@ for (i in 1:length(list)) {
 
 write.csv(results, file = paste0(DIR2,OUT, "\\reliability_score.csv"))
 
-#trim the reliability score
-trim <- results[results$tot != 1,]
-max <- results[results$tot == 1,]
 
-max <- max %>% group_by(reliability,case,county,state) %>% summarise(count_shed = max(count_shed))
-max$tot <- 1
+results<- fread(paste0(DIR,OUT,"\\reliability_score.csv"))
 
-final <- rbind(trim, as.data.frame(max))
-final <- final %>% group_by(reliability, count_shed,case) %>% summarise(tot = sum(tot))
-final <- final[final$count_shed >4,]
+final <- results %>% group_by(reliability,case,county,state) %>% 
+  mutate(diff = tot - lead(tot, default = 0))
 
+final <- final[final$diff != 0,]
+final <- final %>% group_by(reliability, count_shed,case) %>% summarise(tot = sum(diff))
 
-ggplot(final, aes(x = count_shed, y=tot, fill=case)) + 
-  geom_bar(stat="identity")  + xlab(label = "outage length") + ylab(label = "Count") + 
+full <- final[final$count_shed >0,]
+ggplot(full, aes(x = count_shed, y=tot, fill=case)) + 
+  geom_bar(stat="identity")  + xlab(label = "outage length (hrs)") + ylab(label = "Count") + 
   theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
         legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
-        legend.position = c(0.2,0.8)) + 
+        legend.position = c(0.8,0.8)) + 
   guides(colour = guide_legend(override.aes = list(size=10)))+ 
   scale_x_continuous(limits=c(0,100))
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\full_outage.jpg"))
+
+reduce <- final[final$count_shed >12,]
+ggplot(reduce, aes(x = count_shed, y=tot, fill=case)) + 
+  geom_bar(stat="identity")  + xlab(label = "outage length (hrs)") + ylab(label = "Count") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.8,0.8)) + 
+  guides(colour = guide_legend(override.aes = list(size=10)))+ 
+  scale_x_continuous(limits=c(0,500))
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\reduce_outage.jpg"))
+
+reduce <- final[final$count_shed >25,]
+ggplot(reduce, aes(x = count_shed, y=tot, fill=case)) + 
+  geom_bar(stat="identity")  + xlab(label = "outage length (hrs)") + ylab(label = "Count") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.8,0.8)) + 
+  guides(colour = guide_legend(override.aes = list(size=10)))+ 
+  scale_x_continuous(limits=c(0,500))
+
+ggsave(filename = paste0(DIR,OUT, "\\images\\more_reduce_outage.jpg"))
