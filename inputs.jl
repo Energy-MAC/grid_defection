@@ -17,21 +17,18 @@ addprocs()
 
 ##### CREATE MODEL RUN ######
 #Set Case
-@everywhere BAT_COST = 200 # $/kWh
-@everywhere PV_COST = 1000 # $/kW
+@everywhere BAT_COST = 400 # $/kWh
+@everywhere PV_COST = 1200 # $/kW
 @everywhere LOAD_SHED = 0
 
 # Set constants
-@everywhere INV_COST = 150 # $/kW
 @everywhere BAT_EFF = 0.92
 #annual rates
-@everywhere int_rate = 0.03 # percentage interest rate
+@everywhere int_rate = 0.07 # percentage interest rate
 @everywhere bat_life = 20 # years
 @everywhere sol_life = 25 # years
-@everywhere inv_life = 10 # years
 @everywhere BAT_RATE = int_rate / (1 - (1+int_rate)^(-bat_life))
 @everywhere PV_RATE = int_rate / (1 - (1+int_rate)^(-sol_life));
-@everywhere INV_RATE = int_rate / (1 - (1+int_rate)^(-inv_life));
 
 # identify geography IDs to loop through
 @everywhere ID_G = load(DIR * INPUT * "\\optimization_list.csv") |> DataFrame

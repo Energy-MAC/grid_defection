@@ -45,8 +45,8 @@ function solar_opt(ID_G, i)
         charging[1], bat_chg[1] == y / 2 ## beginning state of charge
         charging2[i=1:78840], bat_chg[i+1] == bat_chg[i] + BAT_EFF*power_in[i] - power_out[i]/BAT_EFF ## shows battery cycling
         charging3[i=1:78840], bat_chg[i] <= y ## can't have a higher charge than capacity of battery
-        #powering[i=1:78840], power_in[i] <= y/4 # rate allowed to charge battery (4 hr battery)
-        #depowering[i=1:78840], power_out[i] <= y/4 # rate allowed to discharge battery (4 hr battery)
+        powering[i=1:78840], power_in[i] <= y/4 # rate allowed to charge battery (4 hr battery)
+        depowering[i=1:78840], power_out[i] <= y/4 # rate allowed to discharge battery (4 hr battery)
         balance[i=1:78840], load_v[i]  == power_out[i] - power_in[i] + (sol[i] * x) + shed[i] - pv_curtail[i] ## load balance equation
         sum(shed[i] for i in 1:78840) <= tot_load * LOAD_SHED ## reliability constraint
         #reversing[i=1:78840], pv_curtail[i] <= sol[i] * x  ## can only curtail power which is available and not being used
@@ -81,6 +81,6 @@ function solar_opt(ID_G, i)
      #outcome[1:78840, :id] = fill(case * sol_id,78840)
     GC.gc()
     #output
-    save(DIR * OUT * "\\1000pv_200stor\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
-    save(DIR * OUT * "\\1000pv_200stor\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
+    save(DIR * OUT * "\\1200pv_400stor\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
+    save(DIR * OUT * "\\1200pv_400stor\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
 end

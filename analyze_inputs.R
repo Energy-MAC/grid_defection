@@ -323,12 +323,13 @@ dates$month <- as.numeric(dates$month)
 
 results_0 <- data.frame()
 results_no0 <- data.frame()
+results_daily <- data.frame()
 
 #aggregate solar/load data
 for (i in 1:nrow(list)) {
   
   #get sol/stor data
-  data <- data.frame(readRDS(paste0(DIR,IN,"all_data_1998-2005\\BASE_", list[i,3],"_",list[i,4])))
+  data <- data.frame(readRDS(paste0(DIR,IN,"all_data_1998-2005\\HIGH_", list[i,3],"_",list[i,4])))
   #data$hour <- rep(1:24,2920)
   
   #subset data of interest
@@ -338,7 +339,17 @@ for (i in 1:nrow(list)) {
   #merging
   load_sol <- merge(values, dates, by = c("id","month"), all.x=TRUE)
   load_sol$match <- ifelse(load_sol$year.x == load_sol$year.y, 1,0)
+  load_sol$day <- rep(x=1:2920, each=24)
   
+  ##daily results
+  daily <- load_sol %>% group_by(match,id,day) %>% summarise(gen = sum(gen),
+                                                             load = sum(load))
+  
+  daily_f <- daily %>% group_by(match,id) %>% summarise(correlation = cor(gen,load),
+                                                             count = length(gen))
+  
+  #store values
+  results_daily <- rbind(results_daily,as.data.frame(daily_f))
   
   ##running correlations
   final <- load_sol %>% group_by(match,id) %>% summarise(correlation = cor(gen,load),
@@ -363,6 +374,7 @@ for (i in 1:nrow(list)) {
 
 results_0$match <- as.character(results_0$match)
 results_no0$match <- as.character(results_no0$match)
+results_daily$match <- as.character(results_daily$match)
 
 ggplot(results_0, aes(correlation, colour=match, fill=match)) + 
   geom_density(alpha=0.55) +  xlab(label = "Correlation") + ylab(label = "Density") + 
@@ -378,7 +390,27 @@ ggplot(results_no0, aes(correlation, colour=match, fill=match)) +
         legend.position = c(0.8,0.8)) + 
   guides(colour = guide_legend(override.aes = list(size=10)))
 
+
+ggplot(results_daily, aes(correlation, colour=match, fill=match)) + 
+  geom_density(alpha=0.55) +  xlab(label = "Correlation") + ylab(label = "Density") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.8,0.8)) + 
+  guides(colour = guide_legend(override.aes = list(size=10)))
+
 check_0 <- results_0 %>% group_by(match) %>% summarise(correlation = mean(correlation),
                                                        obs = sum(count))
 check_no0 <- results_no0 %>% group_by(match) %>% summarise(correlation = mean(correlation),
                                                            obs = sum(count))            
+check_daily <- results_daily %>% group_by(match) %>% summarise(correlation = mean(correlation),
+                                                           obs = sum(count)) 
+
+save(results_0,results_no0,results_daily,file=paste0(DIR,OUT,"LOW_correlation.rdata"))
+
+load(file=paste0(DIR,OUT,"BASE_correlation.RData"))
+
+rm(results_0,results_no0,results_daily)
+
+results_0 <- collect[[1]]
+results_no0 <- collect[[2]]
+results_daily <- collect[[3]]
