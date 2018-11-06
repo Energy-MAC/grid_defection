@@ -16,7 +16,7 @@ p_load(magrittr, dplyr, stringr, ggplot2, usmap, RColorBrewer, data.table, scale
 #DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\2018Spring\\Comp Programing in Econ\\Project\\"
 DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
 OUT = "out"
-INPUT = "in"
+IN = "in"
 ##########################################################
 ## I. read in output data ################################
 ##########################################################
@@ -201,24 +201,39 @@ ggsave(filename = paste0(DIR,OUT, "\\images\\",rates[index+1],".jpg"))
 }
 
 ##########################################################
-## III. Geospatial Analysis of sizes #####################
+## III. Geospatial Analysis of costs #####################
 ##########################################################
 #select analysis sample
 sizing <- sizing_3
 
-#Set costs
-BAT_COST = 200 # $/kWh
-PV_COST = 1000 # $/kW
+#bring in load data
+opt <- fread(paste0(DIR,IN,"\\optimization_list_energy.csv"))
+opt_long <- gather(opt[,c(4:5,17:19)],key=case,value=max_load,low_max:high_max)
+opt_long$case <- ifelse(opt_long$case == "low_max","LOW",
+                        ifelse(opt_long$case == "med_max","BASE","HIGH"))
+
+#bring together
+sizing <- merge(sizing,opt_long,by=c("county","state","case"))
+  
+#Set costs (2 cases )
+BAT_COST = 400 # $/kWh
+PV_COST = 1200 # $/kW
+LOAD_COST = 1300 # $/kW peak load
+OM_COST = 100 # $/kW peak load per year
 
 #annual rates
 int_rate = 0.07 # percentage interest rate
 bat_life = 20 # years
 sol_life = 25 # years
+inv_life = 20
 
 BAT_RATE = int_rate / (1 - (1+int_rate)^(-bat_life))
 PV_RATE = int_rate / (1 - (1+int_rate)^(-sol_life))
+INVT_RATE = int_rate / (1 - (1+int_rate)^(-inv_life))
 
-sizing$cost <- sizing$pv * PV_COST * PV_RATE + sizing$storage * BAT_COST * BAT_RATE
+sizing$cost2 <- sizing$pv * PV_COST * PV_RATE + sizing$storage * BAT_COST * BAT_RATE +
+  sizing$max_load * LOAD_COST * INVT_RATE + OM_COST * sizing$max_load
+
 sizing$reliability <- as.numeric(sizing$reliability)
 
 sizes <- merge(sizing, fips, by=c("county","state"))

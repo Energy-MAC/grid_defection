@@ -14,8 +14,8 @@ p_load(magrittr, dplyr, stringr, rjson, maps,maptools, spatstat,rgeos,
        broom, data.table, tidyr, lubridate)
 
 # Set working directory
-#DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
-DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+#DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 OUT <- "out\\"
 IN <-  "in\\"
 LD<- "LOW"
@@ -151,21 +151,43 @@ low <- c()
 med <- c()
 high <- c()
 
+low_max <- c()
+med_max <- c()
+high_max <- c()
+
+low_min <- c()
+med_min <- c()
+high_min <- c()
+
 for (i in 1:nrow(list)) {
   
   #create load dataframes
   temp_low <- fread(paste0(DIR,IN,"res_load\\LOW\\", list[i,10],".csv"), col.names=c("V","load"))
   low <- append(low, sum(temp_low$load))
+  low_max <- append(low_max, max(temp_low$load))
+  low_min <- append(low_min, min(temp_low$load))
   temp_med <- fread(paste0(DIR,IN,"res_load\\BASE\\", list[i,10],".csv"), col.names=c("V","load"))
   med <- append(med, sum(temp_med$load))
+  med_max <- append(med_max, max(temp_med$load))
+  med_min <- append(med_min, min(temp_med$load))
   temp_high <- fread(paste0(DIR,IN,"res_load\\HIGH\\", list[i,10],".csv"), col.names=c("V","load"))
   high <- append(high, sum(temp_high$load))
+  high_max <- append(high_max, max(temp_high$load))
+  high_min <- append(high_min, min(temp_high$load))
 
 }
 
 list$low_energy <- low
 list$med_energy <- med
 list$high_energy <- high
+
+list$low_max <- low_max
+list$med_max <- med_max
+list$high_max <- high_max
+
+list$low_min <- low_min
+list$med_min <- med_min
+list$high_min <- high_min
 
 write.csv(list,paste0(DIR, IN,"optimization_list_energy.csv"))
 
