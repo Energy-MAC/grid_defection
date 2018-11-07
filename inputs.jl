@@ -4,7 +4,7 @@
 ## set up inputs
 using Distributed
 
-addprocs()
+#addprocs()
 
 @everywhere using JuMP, DataFrames, Gurobi, FileIO, TextParse, CSVFiles
 
@@ -36,9 +36,14 @@ addprocs()
 #include model
 @everywhere include("optimization_model.jl")
 
-# Create parallelization
-time = @time pmap(1:(nrow(ID_G)*3)) do i 
-    solar_opt(ID_G, i) 
-    print(i)
-    GC.gc()
+for i = 1:(nrow(ID_G)*3)
+    solar_opt(ID_G, i)
 end
+
+# Create parallelization
+# time = @time pmap(1:(nrow(ID_G)*3)) do i 
+#     GC.gc()
+#     solar_opt(ID_G, i) 
+#     print(i)
+#     GC.gc()
+# end

@@ -405,7 +405,7 @@ check_no0 <- results_no0 %>% group_by(match) %>% summarise(correlation = mean(co
 check_daily <- results_daily %>% group_by(match) %>% summarise(correlation = mean(correlation),
                                                            obs = sum(count)) 
 
-save(results_0,results_no0,results_daily,file=paste0(DIR,OUT,"LOW_correlation.rdata"))
+save(results_0,results_no0,results_daily,file=paste0(DIR,OUT,"HIGH_correlation.rdata"))
 
 load(file=paste0(DIR,OUT,"BASE_correlation.RData"))
 

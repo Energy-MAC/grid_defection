@@ -20,8 +20,7 @@ function solar_opt(ID_G, i)
     end
 
     # Load in solar and load data
-    data = load(DIR * INPUT * "\\all_data\\" * case * sol_id * ".csv")
-    data = DataFrame(data)
+    data = load(DIR * INPUT * "\\all_data\\" * case * sol_id * ".csv") |> DataFrame
     sol = data[:,5]
     load_v = data[:,6]
     tot_load = sum(load_v)
@@ -79,8 +78,9 @@ function solar_opt(ID_G, i)
      outcome[1:78840, :bat_chg] = getvalue(bat_chg[1:78840])
      #outcome[1:78840, :shed_frac] = fill(shed_amt,78840)
      #outcome[1:78840, :id] = fill(case * sol_id,78840)
-    GC.gc()
+     GC.gc()
     #output
     save(DIR * OUT * "\\1200pv_400stor\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
     save(DIR * OUT * "\\1200pv_400stor\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
+    
 end
