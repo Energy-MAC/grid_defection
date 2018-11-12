@@ -13,8 +13,8 @@ library(pacman)
 p_load(magrittr, dplyr, stringr, ggplot2,data.table, ggmap, usmap, mapproj)
 
 # Set working directory
-#DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
-DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+#DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 OUT = "out\\"
 IN = "in\\"
 ##########################################################
@@ -395,7 +395,7 @@ ggplot(results_daily, aes(correlation, colour=match, fill=match)) +
   geom_density(alpha=0.55) +  xlab(label = "Correlation") + ylab(label = "Density") + 
   theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
         legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
-        legend.position = c(0.8,0.8)) + 
+        legend.position = c(0.2,0.8)) + 
   guides(colour = guide_legend(override.aes = list(size=10)))
 
 check_0 <- results_0 %>% group_by(match) %>% summarise(correlation = mean(correlation),
@@ -407,7 +407,7 @@ check_daily <- results_daily %>% group_by(match) %>% summarise(correlation = mea
 
 save(results_0,results_no0,results_daily,file=paste0(DIR,OUT,"HIGH_correlation.rdata"))
 
-load(file=paste0(DIR,OUT,"BASE_correlation.RData"))
+load(file=paste0(DIR,OUT,"HIGH_correlation.RData"))
 
 rm(results_0,results_no0,results_daily)
 

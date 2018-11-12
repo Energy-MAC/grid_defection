@@ -10,7 +10,7 @@ rm(list = ls())
 
 # Packages
 library(pacman)
-p_load(magrittr, dplyr, stringr, ggplot2, usmap, RColorBrewer, data.table, scales)
+p_load(magrittr, dplyr, stringr, ggplot2, usmap, RColorBrewer, data.table, scales,tidyr)
 
 # Set working directory
 #DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\2018Spring\\Comp Programing in Econ\\Project\\"
@@ -214,7 +214,15 @@ opt_long$case <- ifelse(opt_long$case == "low_max","LOW",
 
 #bring together
 sizing <- merge(sizing,opt_long,by=c("county","state","case"))
-  
+
+#bring in reliability data
+reliability <- fread(paste0(DIR,OUT,"\\reliability_score.csv"))
+reliability <- reliability %>% group_by(case, county,state) %>% 
+  summarize(outage_max = max(count_shed))
+
+#bring together
+sizing <- merge(sizing,reliability,by=c("county","state","case"))
+            
 #Set costs (2 cases )
 BAT_COST = 400 # $/kWh
 PV_COST = 1200 # $/kW
