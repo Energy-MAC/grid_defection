@@ -4,7 +4,7 @@
 ## set up inputs
 using Distributed
 
-#addprocs()
+addprocs(3)
 
 @everywhere using JuMP, DataFrames, Gurobi, FileIO, TextParse, CSVFiles
 
@@ -17,9 +17,9 @@ using Distributed
 
 ##### CREATE MODEL RUN ######
 #Set Case
-@everywhere BAT_COST = 400 # $/kWh
-@everywhere PV_COST = 1200 # $/kW
-@everywhere LOAD_SHED = 0
+@everywhere BAT_COST = 100 # $/kWh
+@everywhere PV_COST = 600 # $/kW
+@everywhere LOAD_SHED = 0.05
 
 # Set constants
 @everywhere BAT_EFF = 0.92
@@ -36,14 +36,13 @@ using Distributed
 #include model
 @everywhere include("optimization_model.jl")
 
-for i = 1:(nrow(ID_G)*3)
-    solar_opt(ID_G, i)
-end
+# for i = 1:(nrow(ID_G)*3)
+#     solar_opt(ID_G, i)
+# end
 
 # Create parallelization
-# time = @time pmap(1:(nrow(ID_G)*3)) do i 
-#     GC.gc()
-#     solar_opt(ID_G, i) 
-#     print(i)
-#     GC.gc()
-# end
+time = @time pmap(1:(nrow(ID_G)*3)) do i 
+    solar_opt(ID_G, i) 
+    print(i)
+    GC.gc()
+end

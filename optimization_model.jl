@@ -78,9 +78,10 @@ function solar_opt(ID_G, i)
      outcome[1:78840, :bat_chg] = getvalue(bat_chg[1:78840])
      #outcome[1:78840, :shed_frac] = fill(shed_amt,78840)
      #outcome[1:78840, :id] = fill(case * sol_id,78840)
-     GC.gc()
+     
+    GC.gc()
     #output
-    save(DIR * OUT * "\\1200pv_400stor\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
-    save(DIR * OUT * "\\1200pv_400stor\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
+    save(DIR * OUT * "\\600pv_100stor (min const)\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
+    save(DIR * OUT * "\\600pv_100stor (min const)\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
     
 end
