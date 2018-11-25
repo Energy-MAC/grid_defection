@@ -197,7 +197,7 @@ write.csv(list,paste0(DIR, IN,"optimization_list_energy.csv"))
 DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 #DIR2 <- "C:\\Users\\Will\\Desktop\\data\\Analysis\\"
 
-folder <- "600pv_100stor (min const)"
+folder <- "1200pv_400stor (min const)"
 
 list <- list.files(paste0(DIR2,OUT,folder,"\\"))
 list <- list[lapply(list,function(x) length(grep("outcome",x,value=FALSE))) == 0]
@@ -216,3 +216,5 @@ write.csv(results,paste0(DIR2, OUT,folder,".csv"))
 
 test <- results %>% group_by(county,state) %>% 
   summarize(len = length(pv))
+
+write.csv(test,paste0(DIR2, OUT,"missings.csv"))

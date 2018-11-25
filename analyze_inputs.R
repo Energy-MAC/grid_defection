@@ -10,11 +10,11 @@ rm(list = ls())
 
 # Packages
 library(pacman)
-p_load(magrittr, dplyr, stringr, ggplot2,data.table, ggmap, usmap, mapproj)
+p_load(magrittr, dplyr, stringr, ggplot2,data.table, ggmap, usmap, mapproj,plyr)
 
 # Set working directory
-DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
-#DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+#DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 OUT = "out\\"
 IN = "in\\"
 ##########################################################
@@ -320,107 +320,119 @@ list <- fread(paste0(DIR,IN,"\\optimization_list.csv"))
 #tmy_dates information
 dates <- readRDS(paste0(DIR,IN,"\\tmy_dates"))
 dates$month <- as.numeric(dates$month)
+dates$year <- as.numeric(dates$year)
+colnames(dates)[1]<-"year_tmy"
 
+  
 results_weekly <- data.frame()
 results_monthly <- data.frame()
 results_daily <- data.frame()
+write.csv(load_sol,paste0(DIR,OUT, "\\test.csv"))
 
 #aggregate solar/load data
 for (i in 1:nrow(list)) {
   
   #get sol/stor data
-  data <- data.frame(readRDS(paste0(DIR,IN,"all_data_1998-2005\\HIGH_", list[i,3],"_",list[i,4])))
+  load_sol <- data.frame(readRDS(paste0(DIR,IN,"all_data_1998-2005\\LOW_", list[i,3],"_",list[i,4])))
   #data$hour <- rep(1:24,2920)
-  
-  #subset data of interest
-  values <- data[,c("gen","load","month","year")]
-  values$id <- as.numeric(list[i,10])
+  load_sol$id <- as.numeric(list[i,10])
   
   #merging
-  load_sol <- merge(values, dates, by = c("id","month"), all.x=TRUE)
-  load_sol$match <- ifelse(load_sol$year.x == load_sol$year.y, 1,0)
-  load_sol$day <- rep(x=1:2920, each=24)
-  load_sol$week <- rep(x=1:200, each=24)
+  load_sol <- join(load_sol, dates, by = c("id","month"))
+  #load_sol <- load_sol[with(load_sol, order(year.x, month, day)), ]
+  load_sol$match <- ifelse(load_sol$year == load_sol$year_tmy, 1,0)
+  load_sol$day_unique <- rep(x=1:2920, each=24)
+  load_sol$week <- rep(x=1:418, each=168,length.out = 70080)
   load_sol$county <-as.character(list[i,3])
   load_sol$state <- as.character(list[i,4])
   
   ##daily results
-  daily <- load_sol %>% group_by(match,id,day, county,state) %>% 
-    summarise(gen = sum(gen),load = sum(load))
-  
-  daily_f <- daily %>% group_by(match,id,county,state) %>% 
-    summarise(correlation = cor(gen,load),count = length(gen))
+  daily <- load_sol %>% dplyr::group_by(match,id,day_unique,county,state) %>% 
+    dplyr::summarise(gen = sum(gen),load = sum(load))
   
   #store values
-  results_daily <- rbind(results_daily,as.data.frame(daily_f))
+  results_daily <- rbind(results_daily,as.data.frame(daily))
   
   ##monthly results
-  monthly <- load_sol %>% group_by(match,id,month, county,state) %>% 
-    summarise(gen = sum(gen),load = sum(load))
-  
-  monthly_f <- monthly %>% group_by(match,id,county,state) %>% 
-    summarise(correlation = cor(gen,load),count = length(gen))
+  monthly <- load_sol %>% dplyr::group_by(match,id,month,year, county,state) %>% 
+    dplyr::summarise(gen = sum(gen),load = sum(load))
   
   #store values
-  results_monthly <- rbind(results_monthly,as.data.frame(monthly_f))
+  results_monthly <- rbind(results_monthly,as.data.frame(monthly))
   
 
   ##weekly results
-  weekly <- load_sol %>% group_by(match,id,week, county,state) %>% 
-    summarise(gen = sum(gen),load = sum(load))
-  
-  weekly_f <- weekly %>% group_by(match,id,county,state) %>% 
-    summarise(correlation = cor(gen,load),count = length(gen))
+  weekly <- load_sol %>% dplyr::group_by(match,id,week,county,state) %>% 
+    dplyr::summarise(gen = sum(gen),load = sum(load))
   
   #store values
-  results_weekly <- rbind(results_weekly,as.data.frame(weekly_f))
+  results_weekly <- rbind(results_weekly,as.data.frame(weekly))
   
 }
 
 # save results
-save(results_weekly,results_monthly,results_daily,file=paste0(DIR,OUT,"HIGH_correlation.rdata"))
+save(results_weekly,results_monthly,results_daily,file=paste0(DIR,OUT,"LOW_correlation.rdata"))
 
-load(file=paste0(DIR,OUT,"HIGH_correlation.RData"))
 
-rm(results_weekly,results_monthly,results_daily)
-
+#run analysis
+load(file=paste0(DIR,OUT,"BASE_correlation.RData"))
 
 #convert for plotting
 results_weekly$match <- as.character(results_weekly$match)
 results_monthly$match <- as.character(results_monthly$match)
 results_daily$match <- as.character(results_daily$match)
 
+#average correlation across all observations
+daily_f <- results_daily %>% dplyr::group_by(match) %>% 
+  dplyr::summarise(correlation = cor(gen,load),count = length(gen))
+
+weekly_f <- results_weekly %>% dplyr::group_by(match) %>% 
+  dplyr::summarise(correlation = cor(gen,load),count = length(gen))
+
+monthly_f <- results_monthly %>% dplyr::group_by(match) %>% 
+  dplyr::summarise(correlation = cor(gen,load),count = length(gen))
+
+#calculations by locations
+daily_t <- results_daily %>% dplyr::group_by(match,county,state) %>% 
+  dplyr::summarise(correlation = cor(gen,load),count = length(gen))
+
+weekly_t <- results_weekly %>% dplyr::group_by(match,county,state) %>% 
+  dplyr::summarise(correlation = cor(gen,load),count = length(gen))
+
+monthly_t <- results_monthly %>% dplyr::group_by(match,county,state) %>% 
+  dplyr::summarise(correlation = cor(gen,load),count = length(gen))
+
+#calculate overall correlation averages
+check_weekly <- weekly_t %>% dplyr::group_by(match) %>% 
+  dplyr::summarise(correlation = mean(correlation),obs = sum(count))
+
+check_monthly <- monthly_t %>% dplyr::group_by(match) %>% 
+  dplyr::summarise(correlation = mean(correlation, na.rm=T),obs = sum(count))  
+
+check_daily <- daily_t %>% dplyr::group_by(match) %>% 
+  dplyr::summarise(correlation = mean(correlation),obs = sum(count)) 
+
+
 #graph density plots of correlation
-ggplot(results_weekly, aes(correlation, colour=match, fill=match)) + 
+ggplot(weekly_t, aes(correlation, colour=match, fill=match)) + 
   geom_density(alpha=0.55) +  xlab(label = "Correlation") + ylab(label = "Density") + 
   theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
         legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
         legend.position = c(0.8,0.8)) + 
   guides(colour = guide_legend(override.aes = list(size=10)))
 
-ggplot(results_monthly, aes(correlation, colour=match, fill=match)) + 
+ggplot(monthly_t, aes(correlation, colour=match, fill=match)) + 
   geom_density(alpha=0.55) +  xlab(label = "Correlation") + ylab(label = "Density") + 
   theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
         legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
         legend.position = c(0.8,0.8)) + 
   guides(colour = guide_legend(override.aes = list(size=10)))
 
-ggplot(results_daily, aes(correlation, colour=match, fill=match)) + 
+ggplot(daily_t, aes(correlation, colour=match, fill=match)) + 
   geom_density(alpha=0.55) +  xlab(label = "Correlation") + ylab(label = "Density") + 
   theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
         legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
         legend.position = c(0.2,0.8)) + 
   guides(colour = guide_legend(override.aes = list(size=10)))
-
-#calculate overall correlation averages
-check_weekly <- results_weekly %>% group_by(match) %>% 
-  summarise(correlation = mean(correlation),obs = sum(count))
-
-check_monthly <- results_monthly %>% group_by(match) %>% 
-  summarise(correlation = mean(correlation),obs = sum(count))  
-
-check_daily <- results_daily %>% group_by(match) %>% 
-  summarise(correlation = mean(correlation),obs = sum(count)) 
-
 
 
