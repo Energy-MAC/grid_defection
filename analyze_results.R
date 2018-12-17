@@ -201,7 +201,7 @@ opt_long$case <- ifelse(opt_long$case == "low_max","LOW",
 sizing <- merge(sizing,opt_long,by=c("county","state","case"))
 
 #bring in reliability data
-reliability <- fread(paste0(DIR,OUT,"\\reliability_score.csv"))
+reliability <- fread(paste0(DIR,OUT,"\\600pv_100stor (min const)_reliability_score.csv"))
 reliability <- reliability %>% group_by(case, county,state) %>% 
   summarize(outage_max = max(count_shed))
 
@@ -259,7 +259,7 @@ for (index in 1:length(loads)){
 #######################
 
 ##merge in data
-defect <- merge(base_rates, sizing[,c(1:3,8,10:11)], by=c("county","state","case", "reliability"), all.x = TRUE)
+defect <- merge(base_rates, sizing[,c(1:3,5,6,8,10:12)], by=c("county","state","case", "reliability"), all.x = TRUE)
 
 #take differences
 defect$curr_diff <- defect$r_current - defect$cost
@@ -270,7 +270,7 @@ defect$r0.25_diff <- defect$r_0.25 - defect$cost
 defect$r0_diff <- defect$r_0 - defect$cost
 
 #write to csv
-write.csv(defect,file = paste0(DIR,OUT, "\\defection_v2.csv") )
+write.csv(defect,file = paste0(DIR,OUT, "\\defection_v2.csv"))
 
 
 loads <- c("LOW","BASE","HIGH")
