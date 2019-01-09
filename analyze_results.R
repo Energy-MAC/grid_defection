@@ -13,8 +13,8 @@ library(pacman)
 p_load(magrittr, dplyr, stringr, ggplot2, usmap, RColorBrewer, data.table, scales,tidyr)
 
 # Set working directory
-#DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\2018Spring\\Comp Programing in Econ\\Project\\"
-DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+#DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
 OUT = "out"
 IN = "in"
 ##########################################################
@@ -23,7 +23,7 @@ IN = "in"
 #rates
 base_rates_100 <- fread(paste0(DIR,OUT,"\\ann_bill_100.csv"))
 base_rates_100$reliability <- 0
-base_rates_95 <- fread(paste0(DIR,OUT,"\\ann_bill_100.csv"))
+base_rates_95 <- fread(paste0(DIR,OUT,"\\ann_bill_95.csv"))
 base_rates_95$reliability <- 0.05
 
 base_rates <- rbind(base_rates_100, base_rates_95)
@@ -157,14 +157,12 @@ ggplot(test, aes(x=case, y=ratio_diff)) +
 ## III. Geospatial Analysis of rates #####################
 ##########################################################
 
-rates <- c("r_curr_fixed","r_curr_variable", "r_1_fixed","r_0_variable")
+rates <- c("r_curr_fixed","r_curr_variable", "private_fixed","private_variable")
 
 for (index in seq(1, 4, 2)){
 
-name <- c("fips",rates[index]) 
-
 plot_usmap(data = select(base_rates,one_of(c("fips", rates[index]))), 
-           values = rates[index], regions = "counties") + 
+           values = rates[index], regions = "counties",lines=NA) + 
   scale_fill_distiller(palette = "Spectral", limits=c(-70,2400), na.value="black") + 
     theme(legend.position = c(0.89,0.2),legend.text=element_text(size=15),
           legend.title=element_text(size=15,face="bold"),
@@ -174,8 +172,8 @@ plot_usmap(data = select(base_rates,one_of(c("fips", rates[index]))),
 ggsave(filename = paste0(DIR,OUT, "\\images\\",rates[index],".jpg"))
 
 plot_usmap(data = select(base_rates,one_of(c("fips", rates[index+1]))), 
-           values = rates[index+1], regions = "counties") + 
-  scale_fill_distiller(palette = "Spectral", limits=c(2.5,30), na.value="black") + 
+           values = rates[index+1], regions = "counties",lines=NA) + 
+  scale_fill_distiller(palette = "Spectral", limits=c(0,30), na.value="black") + 
   theme(legend.position = c(0.89,0.2),legend.text=element_text(size=15),
         legend.title=element_text(size=15,face="bold"),
         plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
@@ -193,12 +191,17 @@ sizing <- sizing_1
 
 #bring in load data
 opt <- fread(paste0(DIR,IN,"\\optimization_list_energy.csv"))
-opt_long <- gather(opt[,c(4:5,17:19)],key=case,value=max_load,low_max:high_max)
-opt_long$case <- ifelse(opt_long$case == "low_max","LOW",
-                        ifelse(opt_long$case == "med_max","BASE","HIGH"))
+opt_long_max <- gather(opt[,c(4:5,17:19)],key=case,value=max_load,low_max:high_max)
+opt_long_max$case <- ifelse(opt_long_max$case == "low_max","LOW",
+                        ifelse(opt_long_max$case == "med_max","BASE","HIGH"))
+#energy data
+opt_long_energy <- gather(opt[,c(4:5,14:16)],key=case,value=energy,low_energy:high_energy)
+opt_long_energy$case <- ifelse(opt_long_energy$case == "low_energy","LOW",
+                            ifelse(opt_long_energy$case == "med_energy","BASE","HIGH"))
 
 #bring together
-sizing <- merge(sizing,opt_long,by=c("county","state","case"))
+sizing <- merge(sizing,opt_long_max,by=c("county","state","case"))
+sizing <- merge(sizing,opt_long_energy,by=c("county","state","case"))
 
 #bring in reliability data
 reliability <- fread(paste0(DIR,OUT,"\\600pv_100stor (min const)_reliability_score.csv"))
@@ -242,7 +245,7 @@ for (index in 1:length(loads)){
     
       size <- subset(sizes, case == loads[index] & reliability == rels[rel])
       
-      plot_usmap(data = size[,c("fips","cost")], values = "cost", regions = "counties") + 
+      plot_usmap(data = size[,c("fips","cost")], values = "cost", regions = "counties",lines=NA) + 
         scale_fill_distiller(palette = "Spectral", limits=c(0,8000), oob=squish, na.value="black",
                              labels = c("0","2000","4000","6000",bquote({}>=8000))) +
         labs(fill="Annual cost ($)") + 
@@ -259,10 +262,11 @@ for (index in 1:length(loads)){
 #######################
 
 ##merge in data
-defect <- merge(base_rates, sizing[,c(1:3,5,6,8,10:12)], by=c("county","state","case", "reliability"), all.x = TRUE)
+defect <- merge(base_rates, sizing[,c(1:3,5,6,8:13)], by=c("county","state","case", "reliability"), all.x = TRUE)
 
 #take differences
 defect$curr_diff <- defect$r_current - defect$cost
+defect$private_diff <- defect$r_private - defect$cost
 defect$r1_diff <- defect$r_1 - defect$cost
 defect$r0.75_diff <- defect$r_0.75 - defect$cost
 defect$r0.5_diff <- defect$r_0.5 - defect$cost
@@ -270,11 +274,11 @@ defect$r0.25_diff <- defect$r_0.25 - defect$cost
 defect$r0_diff <- defect$r_0 - defect$cost
 
 #write to csv
-write.csv(defect,file = paste0(DIR,OUT, "\\defection_v2.csv"))
+write.csv(defect,file = paste0(DIR,OUT, "\\defection_v3.csv"))
 
 
 loads <- c("LOW","BASE","HIGH")
-rate <- c("r1_diff","curr_diff")
+rate <- c("private_diff","curr_diff")
 rels <- c(0,0.05)
 
 for (index in 1:length(loads)){
@@ -285,7 +289,7 @@ for (index in 1:length(loads)){
     for (ra in 1:length(rate)){  
       
       plot_usmap(data = select(final,one_of(c("fips", rate[ra]))), 
-                 values = rate[ra], regions = "counties") + 
+                 values = rate[ra], regions = "counties", lines=NA) + 
         scale_fill_distiller(palette = "Spectral", limits=c(-1000,1000), oob=squish, na.value="black",
                              labels = c(bquote({}<=-1000),"-500","0","500","1000")) + 
         theme(legend.position = c(0.89,0.2),legend.text=element_text(size=18),
