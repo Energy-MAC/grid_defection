@@ -13,8 +13,8 @@ library(pacman)
 p_load(magrittr, dplyr, stringr, ggplot2,sp, foreign)
 
 # Set working directory
-#DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
-DIR <- "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+#DIR <- "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
 OUT = "out"
 IN = "in"
 
@@ -25,8 +25,6 @@ IN = "in"
 utilitytocounty = read.dta(paste0(DIR,IN,"\\Stephen\\final\\utilitytocounty.dta"))
 colnames(utilitytocounty)[2] <- "eia_id_e"
 utilitytocounty <- filter(utilitytocounty, year == 2016)
-
-test <- utilitytocounty[!duplicated(utilitytocounty[,c('county', 'state')]),]
 
 ##########################################################
 ## II. calculate rates ##################################
@@ -50,6 +48,8 @@ hi_ak_rates <- hi_ak_rates[ which(hi_ak_rates$state == "HI" | hi_ak_rates$state 
 
 #pick columns of interest
 hi_ak_rates <- hi_ak_rates[keeps]
+hi_ak_rates$varcharge <- hi_ak_rates$varcharge * 100
+hi_ak_rates$pmc <- hi_ak_rates$pmc * 100
 
 #combining datasets
 final_rates <- rbind(final_rates,hi_ak_rates)
@@ -88,16 +88,18 @@ final_rates$r_1_variable <- 0
 county_rates <- merge(utilitytocounty[,c(2,3,4)], final_rates[,c(1,2,3,9:24)], by = "eia_id_e")
 
 county_rates <- county_rates[!duplicated(county_rates[,c('eia_id_e', 'county', 'state.x')]),]
-county_rates <- county_rates[,c(2,3,5:21)]
+county_rates <- county_rates[,c(2,3,6:21)]
 county_rates$state.x <- tolower(county_rates$state.x)
 county_rates$county <- tolower(county_rates$county)
-out_rates <- county_rates %>% group_by(county, state.x) %>% 
-  summarise_each(funs(weighted.mean(., res_cust)), -res_cust)
+ out_rates <- county_rates %>% group_by(county, state.x) %>% 
+  summarise_all(median)
+
+ # out_rates <- county_rates %>% group_by(county, state.x) %>% 
+ #   summarise_each(funs(weighted.mean(., res_cust)), -res_cust)
 
 
-write.csv(out_rates,paste0(DIR, OUT,"\\county_rates_v2.csv"))
+write.csv(out_rates,paste0(DIR, OUT,"\\county_rates_v2_median.csv"))
 
-write.csv(county_rates,paste0(DIR, OUT,"\\test.csv"))
 ##########################################################
 ## III. OLD #################################
 ##########################################################

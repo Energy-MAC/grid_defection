@@ -13,17 +13,17 @@ library(pacman)
 p_load(magrittr, dplyr, stringr, ggplot2, usmap, RColorBrewer, data.table, scales,tidyr)
 
 # Set working directory
-DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
-#DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+#DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
 OUT = "out"
 IN = "in"
 ##########################################################
 ## I. read in output data ################################
 ##########################################################
 #rates
-base_rates_100 <- fread(paste0(DIR,OUT,"\\ann_bill_100.csv"))
+base_rates_100 <- fread(paste0(DIR,OUT,"\\ann_bill_100_median.csv"))
 base_rates_100$reliability <- 0
-base_rates_95 <- fread(paste0(DIR,OUT,"\\ann_bill_95.csv"))
+base_rates_95 <- fread(paste0(DIR,OUT,"\\ann_bill_95_median.csv"))
 base_rates_95$reliability <- 0.05
 
 base_rates <- rbind(base_rates_100, base_rates_95)
@@ -76,19 +76,23 @@ ggplot(sizing, aes(x=case, y=pv, fill=reliability)) +
         legend.position = c(0.9,.8)) + 
   scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
   guides(colour = guide_legend(override.aes = list(size=10))) + 
-  scale_y_continuous(breaks=seq(0,300,50), limits=c(0,300))
+  scale_y_continuous(trans = 'log10') + scale_x_discrete(limits=c("LOW","BASE","HIGH"))
+
+#breaks=seq(0,300,50), limits=c(0,300)
 
 ggsave(filename = paste0(DIR,OUT, "\\images\\pv_sizing.jpg"))
 
 #(storage)
 ggplot(sizing, aes(x=case, y=storage, fill=reliability)) + 
-  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Storage size (kW)") + 
+  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Storage size (kWh)") + 
   theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
         legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
         legend.position = c(0.9,.8)) +  
   scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
   guides(colour = guide_legend(override.aes = list(size=10)))+ 
-  scale_y_continuous(breaks=seq(0,700,100), limits=c(0,700)) 
+  scale_y_continuous(trans = 'log10') + scale_x_discrete(limits=c("LOW","BASE","HIGH"))  
+
+#breaks=seq(0,700,100), limits=c(0,700)
 
 ggsave(filename = paste0(DIR,OUT, "\\images\\storage_sizing.jpg"))
 
@@ -158,30 +162,41 @@ ggplot(test, aes(x=case, y=ratio_diff)) +
 ##########################################################
 
 rates <- c("r_curr_fixed","r_curr_variable", "private_fixed","private_variable")
+ratio <- c("curr_ratio","private_ratio")
 
 for (index in seq(1, 4, 2)){
 
 plot_usmap(data = select(base_rates,one_of(c("fips", rates[index]))), 
            values = rates[index], regions = "counties",lines=NA) + 
-  scale_fill_distiller(palette = "Spectral", limits=c(-70,2400), na.value="black") + 
-    theme(legend.position = c(0.89,0.2),legend.text=element_text(size=15),
-          legend.title=element_text(size=15,face="bold"),
-          plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
-  labs(fill="Annual fixed rate ($)")
+  scale_fill_distiller(palette = "Spectral", limits=c(-70,1500), oob=squish, na.value="black",
+                       labels = c("0","500","1000",bquote({}>=1500))) + 
+    theme(legend.position = c(0.89,0.2),legend.text=element_text(size=20),
+          legend.title=element_text(size=20,face="bold")) +
+  labs(fill="Annual \n fixed \n  rate ($)\n")
 
-ggsave(filename = paste0(DIR,OUT, "\\images\\",rates[index],".jpg"))
+ggsave(filename = paste0(DIR,OUT, "\\images\\",rates[index],".jpg"),width=9)
 
 plot_usmap(data = select(base_rates,one_of(c("fips", rates[index+1]))), 
            values = rates[index+1], regions = "counties",lines=NA) + 
-  scale_fill_distiller(palette = "Spectral", limits=c(0,30), na.value="black") + 
-  theme(legend.position = c(0.89,0.2),legend.text=element_text(size=15),
-        legend.title=element_text(size=15,face="bold"),
-        plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
-  labs(fill="Variable rate \n (cent/kWh)")
+  scale_fill_distiller(palette = "Spectral", limits=c(0,20), oob=squish, na.value="black",
+                       labels = c("0","5","10","15",bquote({}>=20))) + 
+  theme(legend.position = c(0.89,0.2),legend.text=element_text(size=20),
+        legend.title=element_text(size=20,face="bold")) +
+  labs(fill="Variable \n rate \n (\u00A2/kWh)\n")
 
-ggsave(filename = paste0(DIR,OUT, "\\images\\",rates[index+1],".jpg"))
+ggsave(filename = paste0(DIR,OUT, "\\images\\",rates[index+1],".jpg"),width=9)
 
 }
+
+ggplot(data = base_rates) + 
+  geom_histogram(aes(x=curr_ratio, fill="Current Rates")) + 
+  geom_histogram(aes(x=private_ratio, fill="PMC Rates")) +
+  scale_fill_manual(values=c("aquamarine3","deeppink4")) + 
+  xlab(label = "Revenue Source Ratio") + ylab(label = "Density") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"),
+        legend.text=element_text(size=20),legend.title=element_blank(),legend.position = c(0.5,0.9))  
+
+ggsave(filename = paste0(paste0(DIR,OUT, "\\images\\density_ratio",".jpg")))
 
 ##########################################################
 ## III. Geospatial Analysis of costs #####################
@@ -248,10 +263,9 @@ for (index in 1:length(loads)){
       plot_usmap(data = size[,c("fips","cost")], values = "cost", regions = "counties",lines=NA) + 
         scale_fill_distiller(palette = "Spectral", limits=c(0,8000), oob=squish, na.value="black",
                              labels = c("0","2000","4000","6000",bquote({}>=8000))) +
-        labs(fill="Annual cost ($)") + 
-        theme(legend.position = c(0.89,0.2),legend.text=element_text(size=15),
-              legend.title=element_text(size=15,face="bold"),
-              plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0))
+        labs(fill="Annual \n cost \n ($) \n") + 
+        theme(legend.position = c(0.89,0.2),legend.text=element_text(size=20),
+              legend.title=element_text(size=20,face="bold"))
       
       ggsave(filename = paste0(DIR,OUT, "\\images\\syscost_",rels[rel],"_",loads[index],".jpg"))
   }
@@ -272,13 +286,14 @@ defect$r0.75_diff <- defect$r_0.75 - defect$cost
 defect$r0.5_diff <- defect$r_0.5 - defect$cost
 defect$r0.25_diff <- defect$r_0.25 - defect$cost
 defect$r0_diff <- defect$r_0 - defect$cost
-
+defect$current <- as.character(ifelse(defect$curr_diff > 0 ,1,0))
+defect$private <- as.character(ifelse(defect$private_diff > 0 ,1,0))
 #write to csv
 write.csv(defect,file = paste0(DIR,OUT, "\\defection_v3.csv"))
 
 
 loads <- c("LOW","BASE","HIGH")
-rate <- c("private_diff","curr_diff")
+rate <- c("private","current")
 rels <- c(0,0.05)
 
 for (index in 1:length(loads)){
@@ -288,25 +303,38 @@ for (index in 1:length(loads)){
     
     for (ra in 1:length(rate)){  
       
-      plot_usmap(data = select(final,one_of(c("fips", rate[ra]))), 
-                 values = rate[ra], regions = "counties", lines=NA) + 
-        scale_fill_distiller(palette = "Spectral", limits=c(-1000,1000), oob=squish, na.value="black",
-                             labels = c(bquote({}<=-1000),"-500","0","500","1000")) + 
+      data <- select(final,one_of(c("fips", rate[ra])))
+      
+     if(nrow(unique(data[,2]))>1){
+       cols <- c("deeppink4","lightgoldenrod3")
+      } else {
+       cols <- c("deeppink4")
+      }
+      
+      if(nrow(unique(data[,2]))>1){
+        labs <- c("no defection","defection")
+      } else {
+        labs <- c("no defection")
+      } 
+      
+      plot_usmap(data = data, 
+                 values = rate[ra], regions = "counties", lines=NA) +  
+         scale_fill_manual(values=cols,labels=labs,na.value="black") +
         theme(legend.position = c(0.89,0.2),legend.text=element_text(size=18),
               legend.title=element_text(size=15,face="bold"),
               plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
-        labs(fill="Annual saving ($) \n")
+        labs(fill="")
       
-
       ggsave(filename = paste0(DIR,OUT, "\\images\\outcome_",rate[ra],"_",
                                loads[index],"_",rels[rel],".jpg"))
-      
     }
   }
 }
 
+
+
 ## density plots
-rate <- c("r1_diff","curr_diff")
+rate <- c("private_diff","curr_diff")
 rels <- c(0,0.05)
 
 for (index in 1:length(rate)){
@@ -337,7 +365,7 @@ PV_COST = 600 # $/kW
 LOAD_COST = 800 # $/kW peak load
 OM_COST = 100 # $/kW peak load per year
 
-sizing_1 <- merge(sizing_1,opt_long,by=c("county","state","case"))
+sizing_1 <- merge(sizing_1,opt_long_max,by=c("county","state","case"))
 sizing_1$cost <- sizing_1$pv * PV_COST * PV_RATE + sizing_1$storage * BAT_COST * BAT_RATE +
   sizing_1$max_load * LOAD_COST * INVT_RATE + OM_COST * sizing_1$max_load
 
@@ -348,18 +376,29 @@ PV_COST = 1200 # $/kW
 LOAD_COST = 1600 # $/kW peak load
 OM_COST = 100 # $/kW peak load per year
 
-sizing_2 <- merge(sizing_2,opt_long,by=c("county","state","case"))
+sizing_2 <- merge(sizing_2,opt_long_max,by=c("county","state","case"))
 sizing_2$cost <- sizing_2$pv * PV_COST * PV_RATE + sizing_2$storage * BAT_COST * BAT_RATE +
   sizing_2$max_load * LOAD_COST * INVT_RATE + OM_COST * sizing_2$max_load
 
 compiled <- rbind(sizing_1, sizing_2)
 
 ##average stats
-r_stats <- compiled %>% group_by(reliability, case, version) %>% 
-  summarize(med_sol = median(pv),med_stor = median(storage),max_sol = max(pv), max_stor = max(storage),
-            min_sol = min(pv),min_stor = min(storage), med_cost = median(cost))
+r_stats <- sizing_1 %>% group_by(reliability, case) %>% summarize(med_sol = median(pv),
+                                                                  med_stor = median(storage),
+                                                                  max_sol = max(pv), 
+                                                                  max_stor = max(storage), 
+                                                                  min_sol = min(pv),
+                                                                  min_stor = min(storage), 
+                                                                  med_cost = median(cost),
+                                                                  count = length(pv),
+                                                                  mean_sol = mean(pv),
+                                                                  mean_stor = mean(storage),
+                                                                  pv_10 = quantile(pv,.1),
+                                                                  stor_10 = quantile(storage,.1),
+                                                                  pv_90 = quantile(pv,.9),
+                                                                  stor_90 = quantile(storage,.9))
 
-write.csv(r_stats,file = paste0(DIR,OUT, "\\size_cost_v2.csv"))
+write.csv(r_stats,file = paste0(DIR,OUT, "\\size_cost_v3.csv"))
 
 
 ##########################################################
@@ -394,9 +433,11 @@ for (i in 1:length(list)) {
   }
   
   out$count_shed <- value
+  out$month <- rep(x=1:12, each=730, length.out=78840)
   
   final <- out %>% group_by(reliability, case, county,state,count_shed) %>% 
-    summarize(tot = length(load))
+    summarize(tot = length(load),
+              month = mean(month))
   
   results <- rbind(results,as.data.frame(final))
 }
