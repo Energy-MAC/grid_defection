@@ -229,7 +229,7 @@ sizing <- merge(sizing,reliability,by=c("county","state","case"))
 #Set costs (2 cases )
 BAT_COST = 100 # $/kWh
 PV_COST = 600 # $/kW
-LOAD_COST = 800 # $/kW peak load
+LOAD_COST = 650 # $/kW peak load
 OM_COST = 100 # $/kW peak load per year
 
 #annual rates
@@ -244,6 +244,9 @@ INVT_RATE = int_rate / (1 - (1+int_rate)^(-inv_life))
 
 sizing$cost <- sizing$pv * PV_COST * PV_RATE + sizing$storage * BAT_COST * BAT_RATE +
   sizing$max_load * LOAD_COST * INVT_RATE + OM_COST * sizing$max_load
+
+sizing$cap_ex <- sizing$pv * PV_COST  + sizing$storage * BAT_COST +
+  sizing$max_load * LOAD_COST 
 
 sizing$reliability <- as.numeric(sizing$reliability)
 
@@ -407,10 +410,11 @@ write.csv(r_stats,file = paste0(DIR,OUT, "\\size_cost_v3.csv"))
 DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 #DIR2 <- "C:\\Users\\Will\\Desktop\\data\\Analysis\\"
 
-folder <- "\\1200pv_400stor (min const)"
+folder <- "\\600pv_100stor (min const)"
 
 list <- list.files(paste0(DIR2,OUT,folder,"\\"))
 list <- list[lapply(list,function(x) length(grep("results",x,value=FALSE))) == 0]
+list <- list[lapply(list,function(x) length(grep("_0_",x,value=FALSE))) == 0]
 results <- data.frame()
 
 for (i in 1:length(list)) {
@@ -442,10 +446,10 @@ for (i in 1:length(list)) {
   results <- rbind(results,as.data.frame(final))
 }
 
-write.csv(results, file = paste0(DIR2,OUT, "\\",folder,"_reliability_score.csv"))
+write.csv(results, file = paste0(DIR2,OUT, "\\","600pv_100stor (min const)_reliability_score_v2.csv"))
 
 
-results<- fread(paste0(DIR,OUT,"\\reliability_score.csv"))
+results<- fread(paste0(DIR2,OUT,"\\600pv_100stor (min const)_reliability_score.csv"))
 
 final <- results %>% group_by(reliability,case,county,state) %>% 
   mutate(diff = tot - lead(tot, default = 0))
