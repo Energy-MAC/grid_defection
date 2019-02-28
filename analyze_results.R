@@ -10,7 +10,7 @@ rm(list = ls())
 
 # Packages
 library(pacman)
-p_load(magrittr, dplyr, stringr, ggplot2, usmap, RColorBrewer, data.table, scales,tidyr)
+p_load(magrittr, dplyr, stringr, ggplot2, usmap, RColorBrewer, data.table, scales,tidyr, S4Vectors)
 
 # Set working directory
 #DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
@@ -417,6 +417,26 @@ list <- list[lapply(list,function(x) length(grep("results",x,value=FALSE))) == 0
 list <- list[lapply(list,function(x) length(grep("_0_",x,value=FALSE))) == 0]
 results <- data.frame()
 
+##summing when shedding happens
+for (i in 1:length(list)) {
+  
+  out <- fread(paste0(DIR2, OUT,folder,"\\",list[i]))
+  out$id <- substr(list[i],1,nchar(list[i]) - 4)
+  out <- out %>% separate(id, c("remove","reliability","case","county","state"), "_")
+  out$remove <- NULL
+  out$month <- rep(x=1:12, each=730, length.out=78840)
+  
+  final <- out %>% group_by(reliability, case, county,state,count_shed,month) %>% 
+    summarize(load = sum(load),
+              shed = sum(shed))
+  
+  results <- rbind(results,as.data.frame(final))
+}
+
+write.csv(results, file = paste0(DIR2,OUT, "\\","600pv_100stor (min const)_month_shedding.csv"))
+
+
+##counting length of reliability
 for (i in 1:length(list)) {
   
   out <- fread(paste0(DIR2, OUT,folder,"\\",list[i]))
@@ -448,14 +468,29 @@ for (i in 1:length(list)) {
 
 write.csv(results, file = paste0(DIR2,OUT, "\\","600pv_100stor (min const)_reliability_score_v2.csv"))
 
-
-results<- fread(paste0(DIR2,OUT,"\\600pv_100stor (min const)_reliability_score.csv"))
-
-final <- results %>% group_by(reliability,case,county,state) %>% 
+#load in reliability results
+results<- fread(paste0(DIR,OUT,"\\600pv_100stor (min const)_reliability_score_v2.csv"))
+results <- results %>% group_by(reliability,case,county,state) %>% 
   mutate(diff = tot - lead(tot, default = 0))
+results <- final[final$diff != 0,]
 
-final <- final[final$diff != 0,]
-final <- final %>% group_by(reliability, count_shed,case) %>% summarise(tot = sum(diff))
+
+## distribution of month of outage
+timing <- results %>% group_by(reliability, month,case, count_shed) %>% summarise(tot = sum(diff))
+
+plot_1 <- results[results$count_shed <24,]
+plot_1<- plot_1[rep(row.names(plot_1), plot_1$diff), 1:9]
+ggplot(plot_1, aes(month, colour=case, fill=case)) + 
+  geom_density(alpha=0.55) + xlab(label = "Month") + ylab(label = "Density") + 
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+        legend.position = c(0.2,0.8)) + 
+  guides(colour = guide_legend(override.aes = list(size=10))) + 
+  scale_x_continuous(breaks = seq(1,12,1))
+
+
+## plotting different outage lengths
+final <- results %>% group_by(reliability, count_shed,case) %>% summarise(tot = sum(diff))
 
 full <- final[final$count_shed >0,]
 ggplot(full, aes(x = count_shed, y=tot, fill=case)) + 
