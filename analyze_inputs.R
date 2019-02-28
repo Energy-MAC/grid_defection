@@ -13,8 +13,8 @@ library(pacman)
 p_load(magrittr, dplyr, stringr, ggplot2,data.table, ggmap, usmap, mapproj,plyr)
 
 # Set working directory
-#DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
-DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+#DIR <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 OUT = "out\\"
 IN = "in\\"
 ##########################################################
@@ -435,4 +435,15 @@ ggplot(daily_t, aes(correlation, colour=match, fill=match)) +
         legend.position = c(0.2,0.8)) + 
   guides(colour = guide_legend(override.aes = list(size=10)))
 
+
+##########################################################
+## II. REgion plot #######################################
+##########################################################
+mapping <- fread(paste0(DIR,IN,"state_mapping.csv"))
+
+plot_usmap(data = mapping, values = "Region", regions = "states") +  
+  theme(legend.position = c(0.89,0.2),legend.text=element_text(size=16),
+        legend.title=element_text(size=15,face="bold"),
+        plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
+  labs(fill="")
 
