@@ -426,7 +426,7 @@ for (i in 1:length(list)) {
   out$remove <- NULL
   out$month <- rep(x=1:12, each=730, length.out=78840)
   
-  final <- out %>% group_by(reliability, case, county,state,count_shed,month) %>% 
+  final <- out %>% group_by(reliability, case, county,state,month) %>% 
     summarize(load = sum(load),
               shed = sum(shed))
   
@@ -435,6 +435,20 @@ for (i in 1:length(list)) {
 
 write.csv(results, file = paste0(DIR2,OUT, "\\","600pv_100stor (min const)_month_shedding.csv"))
 
+#create output for graph
+results<- fread(paste0(DIR,OUT,"\\600pv_100stor (min const)_month_shedding.csv"))
+results$shed_percent <- results$shed / results$load
+
+final <- results %>% group_by(month) %>% 
+  summarize(shed_percent = mean(shed_percent))
+
+write.csv(final, file = paste0(DIR2,OUT, "\\month_shedding.csv"))
+
+final_2 <- results %>% group_by(month) %>% 
+  summarize(load = sum(load),
+            shed = sum(shed))
+
+final_2$shed_percent <- final_2$shed / final_2$load
 
 ##counting length of reliability
 for (i in 1:length(list)) {
