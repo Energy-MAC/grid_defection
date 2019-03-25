@@ -214,12 +214,16 @@ opt_long_energy <- gather(opt[,c(4:5,14:16)],key=case,value=energy,low_energy:hi
 opt_long_energy$case <- ifelse(opt_long_energy$case == "low_energy","LOW",
                             ifelse(opt_long_energy$case == "med_energy","BASE","HIGH"))
 
+#solar data
+sol_col <- fread(paste0(DIR,IN,"\\solar_collection.csv"))
+
 #bring together
 sizing <- merge(sizing,opt_long_max,by=c("county","state","case"))
 sizing <- merge(sizing,opt_long_energy,by=c("county","state","case"))
+sizing <- merge(sizing,sol_col[,3:5],by=c("county","state"))
 
 #bring in reliability data
-reliability <- fread(paste0(DIR,OUT,"\\600pv_100stor (min const)_reliability_score.csv"))
+reliability <- fread(paste0(DIR,OUT,"\\600pv_100stor (min const)_reliability_score_v2.csv"))
 reliability <- reliability %>% group_by(case, county,state) %>% 
   summarize(outage_max = max(count_shed))
 
@@ -244,6 +248,11 @@ INVT_RATE = int_rate / (1 - (1+int_rate)^(-inv_life))
 
 sizing$cost <- sizing$pv * PV_COST * PV_RATE + sizing$storage * BAT_COST * BAT_RATE +
   sizing$max_load * LOAD_COST * INVT_RATE + OM_COST * sizing$max_load
+
+sizing$pv_lev <- (PV_COST * PV_RATE + 
+                     LOAD_COST * INVT_RATE + 
+                    OM_COST ) / (sizing$gen/9)
+  
 
 sizing$cap_ex <- sizing$pv * PV_COST  + sizing$storage * BAT_COST +
   sizing$max_load * LOAD_COST 
@@ -279,22 +288,62 @@ for (index in 1:length(loads)){
 #######################
 
 ##merge in data
-defect <- merge(base_rates, sizing[,c(1:3,5,6,8:13)], by=c("county","state","case", "reliability"), all.x = TRUE)
+defect <- merge(base_rates, sizing[,c(1:3,5,6,8:15)], by=c("county","state","case", "reliability"), all.x = TRUE)
+
+##load defection
+defect$load_current <- as.character(ifelse(defect$r_curr_variable/100 > defect$pv_lev,1,0))
+defect$load_pmc <- as.character(ifelse(defect$private_variable/100 > defect$pv_lev,1,0))
+
+
+## load defection plotting
+loads <- c("LOW")
+rate <- c("load_pmc","load_current")
+rels <- c(0)
+
+for (index in 1:length(loads)){
+  for(rel in 1:length(rels)){
+    
+    final <- subset(defect, case == loads[index] & reliability == rels[rel])
+    
+    for (ra in 1:length(rate)){  
+      
+      data <- select(final,one_of(c("fips", rate[ra])))
+      
+      if(nrow(unique(data[,2]))>1){
+        cols <- c("deeppink4","lightgoldenrod3")
+      } else {
+        cols <- c("deeppink4")
+      }
+      
+      if(nrow(unique(data[,2]))>1){
+        labs <- c("no defection","defection")
+      } else {
+        labs <- c("no defection")
+      } 
+      
+      plot_usmap(data = data, 
+                 values = rate[ra], regions = "counties", lines=NA) +  
+        scale_fill_manual(values=cols,labels=labs,na.value="black") +
+        theme(legend.position = c(0.89,0.2),legend.text=element_text(size=18),
+              legend.title=element_text(size=15,face="bold"),
+              plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
+        labs(fill="")
+      
+      ggsave(filename = paste0(DIR,OUT, "\\images\\outcome_",rate[ra],"_",
+                               loads[index],"_",rels[rel],".jpg"))
+    }
+  }
+}
 
 #take differences
 defect$curr_diff <- defect$r_current - defect$cost
 defect$private_diff <- defect$r_private - defect$cost
-defect$r1_diff <- defect$r_1 - defect$cost
-defect$r0.75_diff <- defect$r_0.75 - defect$cost
-defect$r0.5_diff <- defect$r_0.5 - defect$cost
-defect$r0.25_diff <- defect$r_0.25 - defect$cost
-defect$r0_diff <- defect$r_0 - defect$cost
-defect$current <- as.character(ifelse(defect$curr_diff > 0 ,1,0))
-defect$private <- as.character(ifelse(defect$private_diff > 0 ,1,0))
+defect$current <- as.character(ifelse(defect$curr_diff > 0 & defect$pv < 20 & defect$storage<200,1,0))
+defect$private <- as.character(ifelse(defect$private_diff > 0 & defect$pv < 20 & defect$storage<200,1,0))
 #write to csv
-write.csv(defect,file = paste0(DIR,OUT, "\\defection_v3.csv"))
+write.csv(defect,file = paste0(DIR,OUT, "\\defection_v4.csv"))
 
-
+## Grid defection plotting
 loads <- c("LOW","BASE","HIGH")
 rate <- c("private","current")
 rels <- c(0,0.05)
@@ -333,7 +382,6 @@ for (index in 1:length(loads)){
     }
   }
 }
-
 
 
 ## density plots
