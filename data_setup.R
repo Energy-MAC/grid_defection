@@ -192,6 +192,34 @@ list$high_min <- high_min
 write.csv(list,paste0(DIR, IN,"optimization_list_energy.csv"))
 
 ##########################################################
+## IV. Aggregate solar data ##############################
+##########################################################
+DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
+DIR3 <- "G:\\Team Drives\\Renewable_Profile\\Analysis\\all_dpv\\out\\solar_profile (2008-2016)\\"
+
+list <- fread(paste0(DIR2,IN,"optimization_list.csv"))
+
+sol_collection <- data.frame()
+
+for (i in 1:nrow(list)) {
+  
+  #load solar data
+  sol <- fread(paste0(DIR3, list[i,3],"_", list[i,4],".csv"))
+  
+  #create output
+  sol_summ <- sol %>% group_by() %>% 
+    summarize(len = length(generation),gen=sum(generation))
+  
+  sol_summ$county <-as.character(list[i,3])
+  sol_summ$state <- as.character(list[i,4])
+  
+  sol_collection <- rbind(sol_collection,as.data.frame(sol_summ))
+
+}
+
+write.csv(sol_collection,paste0(DIR2, OUT,"solar_collection.csv"))
+
+##########################################################
 ## IV. Compile results file ##############################
 ##########################################################
 DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
