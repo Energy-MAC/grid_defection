@@ -246,13 +246,14 @@ BAT_RATE = int_rate / (1 - (1+int_rate)^(-bat_life))
 PV_RATE = int_rate / (1 - (1+int_rate)^(-sol_life))
 INVT_RATE = int_rate / (1 - (1+int_rate)^(-inv_life))
 
-sizing$cost <- sizing$pv * PV_COST * PV_RATE + sizing$storage * BAT_COST * BAT_RATE +
+sizing$grid_defect_cost <- sizing$pv * PV_COST * PV_RATE + sizing$storage * BAT_COST * BAT_RATE +
   sizing$max_load * LOAD_COST * INVT_RATE + OM_COST * sizing$max_load
 
 sizing$pv_lev <- (PV_COST * PV_RATE + 
                      LOAD_COST * INVT_RATE + 
                     OM_COST ) / (sizing$gen/9)
-  
+
+sizing$pv_size_load_offset <- sizing$energy / (sizing$gen/9)
 
 sizing$cap_ex <- sizing$pv * PV_COST  + sizing$storage * BAT_COST +
   sizing$max_load * LOAD_COST 
@@ -288,64 +289,44 @@ for (index in 1:length(loads)){
 #######################
 
 ##merge in data
-defect <- merge(base_rates, sizing[,c(1:3,5,6,8:15)], by=c("county","state","case", "reliability"), all.x = TRUE)
+defect <- merge(base_rates, sizing[,c(1:3,5:17)], by=c("county","state","case", "reliability"), all.x = TRUE)
 
-##load defection
-defect$load_current <- as.character(ifelse(defect$r_curr_variable/100 > defect$pv_lev,1,0))
-defect$load_pmc <- as.character(ifelse(defect$private_variable/100 > defect$pv_lev,1,0))
-
-
-## load defection plotting
-loads <- c("LOW")
-rate <- c("load_pmc","load_current")
-rels <- c(0)
-
-for (index in 1:length(loads)){
-  for(rel in 1:length(rels)){
-    
-    final <- subset(defect, case == loads[index] & reliability == rels[rel])
-    
-    for (ra in 1:length(rate)){  
-      
-      data <- select(final,one_of(c("fips", rate[ra])))
-      
-      if(nrow(unique(data[,2]))>1){
-        cols <- c("deeppink4","lightgoldenrod3")
-      } else {
-        cols <- c("deeppink4")
-      }
-      
-      if(nrow(unique(data[,2]))>1){
-        labs <- c("no defection","defection")
-      } else {
-        labs <- c("no defection")
-      } 
-      
-      plot_usmap(data = data, 
-                 values = rate[ra], regions = "counties", lines=NA) +  
-        scale_fill_manual(values=cols,labels=labs,na.value="black") +
-        theme(legend.position = c(0.89,0.2),legend.text=element_text(size=18),
-              legend.title=element_text(size=15,face="bold"),
-              plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
-        labs(fill="")
-      
-      ggsave(filename = paste0(DIR,OUT, "\\images\\outcome_",rate[ra],"_",
-                               loads[index],"_",rels[rel],".jpg"))
-    }
-  }
-}
+##load defection cost
+defect$load_defect_cost_current <- defect$r_curr_fixed + (1 - defect$reliability) * defect$energy * 
+  defect$pv_lev
+  
+defect$load_defect_cost_pmc <- defect$private_fixed + (1 - defect$reliability) * defect$energy * 
+  defect$pv_lev
 
 #take differences
-defect$curr_diff <- defect$r_current - defect$cost
-defect$private_diff <- defect$r_private - defect$cost
-defect$current <- as.character(ifelse(defect$curr_diff > 0 & defect$pv < 20 & defect$storage<200,1,0))
-defect$private <- as.character(ifelse(defect$private_diff > 0 & defect$pv < 20 & defect$storage<200,1,0))
+defect$curr_diff <- defect$r_current - defect$grid_defect_cost
+defect$private_diff <- defect$r_private - defect$grid_defect_cost
+
+##cost based defection
+defect$current_defect_cost <- as.character(ifelse(defect$r_current < defect$load_defect_cost_current & 
+                                      defect$r_current < defect$grid_defect_cost,0,
+                                  ifelse(defect$load_defect_cost_current < defect$grid_defect_cost,1,2)))
+
+defect$private_defect_cost <- as.character(ifelse(defect$r_private < defect$load_defect_cost_pmc & 
+                                      defect$r_private < defect$grid_defect_cost,0,
+                                  ifelse(defect$load_defect_cost_pmc < defect$grid_defect_cost,1,2)))
+##with system constraints
+defect$current_defect_wconst <- as.character(ifelse(defect$current_defect_cost == 2 & 
+          (defect$pv > 20 | defect$storage > 200) & defect$r_current < defect$load_defect_cost_current,0,
+          ifelse(defect$current_defect_cost == 2 & (defect$pv > 20 | defect$storage > 200) & 
+              defect$r_current > defect$load_defect_cost_current,1,defect$current_defect_cost)))
+
+defect$private_defect_wconst <- as.character(ifelse(defect$private_defect_cost == 2 & 
+          (defect$pv > 20 | defect$storage > 200) & defect$r_private < defect$load_defect_cost_pmc,0,
+        ifelse(defect$private_defect_cost == 2 & (defect$pv > 20 | defect$storage > 200) & 
+            defect$r_private > defect$load_defect_cost_pmc,1,defect$private_defect_cost)))
+
 #write to csv
-write.csv(defect,file = paste0(DIR,OUT, "\\defection_v4.csv"))
+write.csv(defect,file = paste0(DIR,OUT, "\\defection_v5.csv"))
 
 ## Grid defection plotting
 loads <- c("LOW","BASE","HIGH")
-rate <- c("private","current")
+rate <- c("private_defect_wconst","current_defect_wconst")
 rels <- c(0,0.05)
 
 for (index in 1:length(loads)){
@@ -356,19 +337,15 @@ for (index in 1:length(loads)){
     for (ra in 1:length(rate)){  
       
       data <- select(final,one_of(c("fips", rate[ra])))
+      data$color <- ifelse(data[,2]=="0","deeppink4",ifelse(data[,2]=="1","lightgoldenrod3","darkolivegreen"))
+      data$label <- ifelse(data[,2]=="0","no defection",ifelse(data[,2]=="1","load defection","grid defection"))
+      data <- data[order(-label),]
       
-     if(nrow(unique(data[,2]))>1){
-       cols <- c("deeppink4","lightgoldenrod3")
-      } else {
-       cols <- c("deeppink4")
-      }
-      
-      if(nrow(unique(data[,2]))>1){
-        labs <- c("no defection","defection")
-      } else {
-        labs <- c("no defection")
-      } 
-      
+      cols <- unique(data[,3])
+      cols <- as.matrix(cols)
+      labs <- unique(data[,4])
+      labs <- as.matrix(labs)
+
       plot_usmap(data = data, 
                  values = rate[ra], regions = "counties", lines=NA) +  
          scale_fill_manual(values=cols,labels=labs,na.value="black") +
