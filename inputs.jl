@@ -1,12 +1,13 @@
 ##run
 # cd("C:\\Users\\wgorman\\Desktop\\grid_defection\\")
 # cd("C:\\Users\\Will\\Desktop\\grid_defection\\")
+# include("inputs.jl")
 ## set up inputs
 using Distributed
 
 addprocs(3)
 
-@everywhere using JuMP, DataFrames, Gurobi, FileIO, TextParse, CSVFiles
+@everywhere using  DataFrames, Gurobi, FileIO, TextParse, CSVFiles, JuMP
 
 # Set-working directory
 #DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\"
@@ -19,13 +20,13 @@ addprocs(3)
 #Set Case
 @everywhere BAT_COST = 100 # $/kWh
 @everywhere PV_COST = 600 # $/kW
-@everywhere LOAD_SHED = 0.05
+@everywhere LOAD_SHED = 0.01
 
 # Set constants
 @everywhere BAT_EFF = 0.92
 #annual rates
-@everywhere int_rate = 0.07 # percentage interest rate
-@everywhere bat_life = 20 # years
+@everywhere int_rate = 0.04 # percentage interest rate
+@everywhere bat_life = 10 # years
 @everywhere sol_life = 25 # years
 @everywhere BAT_RATE = int_rate / (1 - (1+int_rate)^(-bat_life))
 @everywhere PV_RATE = int_rate / (1 - (1+int_rate)^(-sol_life));
