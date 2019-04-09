@@ -36,7 +36,7 @@ rates = read.dta(paste0(DIR,IN,"\\Stephen\\final\\output.dta"))
 final_rates <- filter(rates, year == 2016)
 
 #pick columns of interest
-keeps <- c("state","eia_id_e","res_cust","res_sales","res_rev","fixedcharge","varcharge", "pmc")
+keeps <- c("state","eia_id_e","eia_name_d","eia_name_e", "res_cust","res_sales","res_rev","fixedcharge","varcharge", "pmc")
 final_rates <- final_rates[keeps]
 
 #download HI and AK data
@@ -66,39 +66,60 @@ final_rates$private_fixed <- (final_rates$res_rev -
                                 (final_rates$pmc/100 * final_rates$res_sales))/final_rates$res_cust
 final_rates$private_variable <- final_rates$pmc
 
-final_rates$r_0_fixed <- 0
-final_rates$r_0_variable <- final_rates$res_rev/final_rates$res_sales * 100
+###checking###
+# final_rates$res_rev_check <- final_rates$res_sales * final_rates$varcharge/100 + 
+#   final_rates$fixedcharge * 12 * final_rates$res_cust
+# 
+# final_rates$diff <- final_rates$res_rev - final_rates$res_rev_check
 
-final_rates$r_0.25_fixed <- final_rates$res_rev * 0.25 / final_rates$res_cust
-final_rates$r_0.25_variable <- final_rates$res_rev * 0.75 / final_rates$res_sales * 100
-
-final_rates$r_0.5_fixed <- final_rates$res_rev * 0.5 / final_rates$res_cust
-final_rates$r_0.5_variable <- final_rates$res_rev * 0.5 / final_rates$res_sales * 100
-
-final_rates$r_0.75_fixed <- final_rates$res_rev * 0.75 / final_rates$res_cust
-final_rates$r_0.75_variable <- final_rates$res_rev * 0.25 / final_rates$res_sales * 100
-  
-final_rates$r_1_fixed <- final_rates$res_rev/final_rates$res_cust
-final_rates$r_1_variable <- 0
+# final_rates$r_0_fixed <- 0
+# final_rates$r_0_variable <- final_rates$res_rev/final_rates$res_sales * 100
+# 
+# final_rates$r_0.25_fixed <- final_rates$res_rev * 0.25 / final_rates$res_cust
+# final_rates$r_0.25_variable <- final_rates$res_rev * 0.75 / final_rates$res_sales * 100
+# 
+# final_rates$r_0.5_fixed <- final_rates$res_rev * 0.5 / final_rates$res_cust
+# final_rates$r_0.5_variable <- final_rates$res_rev * 0.5 / final_rates$res_sales * 100
+# 
+# final_rates$r_0.75_fixed <- final_rates$res_rev * 0.75 / final_rates$res_cust
+# final_rates$r_0.75_variable <- final_rates$res_rev * 0.25 / final_rates$res_sales * 100
+#   
+# final_rates$r_1_fixed <- final_rates$res_rev/final_rates$res_cust
+# final_rates$r_1_variable <- 0
 
 ##########################################################
 ## III. combine geography #################################
 ##########################################################
 
-county_rates <- merge(utilitytocounty[,c(2,3,4)], final_rates[,c(1,2,3,9:24)], by = "eia_id_e")
+county_rates <- merge(utilitytocounty[,c(2,3,4)], final_rates[,c(1:4,11:16)], by = "eia_id_e")
 
 county_rates <- county_rates[!duplicated(county_rates[,c('eia_id_e', 'county', 'state.x')]),]
-county_rates <- county_rates[,c(2,3,6:21)]
+county_rates <- county_rates[,c(2,3,7:12)]
 county_rates$state.x <- tolower(county_rates$state.x)
 county_rates$county <- tolower(county_rates$county)
- out_rates <- county_rates %>% group_by(county, state.x) %>% 
+
+# out_rates <- county_rates %>% group_by(county, state.x) %>% 
+#   summarise_each(funs(weighted.mean(., res_cust)), -res_cust)
+
+out_rates <- county_rates %>% group_by(county, state.x) %>% 
   summarise_all(median)
 
- # out_rates <- county_rates %>% group_by(county, state.x) %>% 
- #   summarise_each(funs(weighted.mean(., res_cust)), -res_cust)
+max <- county_rates %>% group_by(county, state.x) %>% 
+  summarise_all(max)
+
+min <- county_rates %>% group_by(county, state.x) %>% 
+  summarise_all(min)
+
+num_rates <- county_rates %>% group_by(county, state.x) %>% 
+  summarize(count = length(county))
+
+out_rates <- cbind(out_rates, max)
+out_rates <- cbind(out_rates, min)
+out_rates <- cbind(out_rates, num_rates)
+
+write.csv(out_rates,paste0(DIR, OUT,"\\county_rates_v3_median.csv"))
 
 
-write.csv(out_rates,paste0(DIR, OUT,"\\county_rates_v2_median.csv"))
 
 ##########################################################
 ## III. OLD #################################

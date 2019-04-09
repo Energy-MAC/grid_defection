@@ -10,7 +10,8 @@ rm(list = ls())
 
 # Packages
 library(pacman)
-p_load(magrittr, dplyr, stringr, ggplot2, usmap, RColorBrewer, data.table, scales,tidyr, S4Vectors)
+p_load(magrittr, dplyr, stringr, ggplot2, usmap, 
+       RColorBrewer, data.table, scales,tidyr, S4Vectors)
 
 # Set working directory
 #DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
@@ -45,6 +46,7 @@ fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
 ##########################################################
 #select analysis sample
 sizing <- rbind(sizing_1,sizing_2)
+sizing$reliability <- as.character(sizing$reliability)
 
 ##plotting reliability of 0
 ggplot(data=sizing[reliability=="0"], aes(pv,storage)) + geom_point(aes(color=case)) +
@@ -233,7 +235,7 @@ sizing <- merge(sizing,reliability,by=c("county","state","case"))
 #Set costs (2 cases )
 BAT_COST = 100 # $/kWh
 PV_COST = 600 # $/kW
-LOAD_COST = 650 # $/kW peak load
+LOAD_COST = 800 # $/kW peak load
 OM_COST = 100 # $/kW peak load per year
 
 #annual rates
@@ -322,7 +324,7 @@ defect$private_defect_wconst <- as.character(ifelse(defect$private_defect_cost =
             defect$r_private > defect$load_defect_cost_pmc,1,defect$private_defect_cost)))
 
 #write to csv
-write.csv(defect,file = paste0(DIR,OUT, "\\defection_v5.csv"))
+write.csv(defect,file = paste0(DIR,OUT, "\\defection_v5_highcost.csv"))
 
 ## Grid defection plotting
 loads <- c("LOW","BASE","HIGH")
@@ -337,7 +339,7 @@ for (index in 1:length(loads)){
     for (ra in 1:length(rate)){  
       
       data <- select(final,one_of(c("fips", rate[ra])))
-      data$color <- ifelse(data[,2]=="0","deeppink4",ifelse(data[,2]=="1","lightgoldenrod3","darkolivegreen"))
+      data$color <- ifelse(data[,2]=="0","gray",ifelse(data[,2]=="1","deeppink4","darkolivegreen"))
       data$label <- ifelse(data[,2]=="0","no defection",ifelse(data[,2]=="1","load defection","grid defection"))
       data <- data[order(-label),]
       
@@ -351,7 +353,7 @@ for (index in 1:length(loads)){
          scale_fill_manual(values=cols,labels=labs,na.value="black") +
         theme(legend.position = c(0.89,0.2),legend.text=element_text(size=18),
               legend.title=element_text(size=15,face="bold"),
-              plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
+              plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) + guides(fill=FALSE) +
         labs(fill="")
       
       ggsave(filename = paste0(DIR,OUT, "\\images\\outcome_",rate[ra],"_",
@@ -397,6 +399,8 @@ sizing_1 <- merge(sizing_1,opt_long_max,by=c("county","state","case"))
 sizing_1$cost <- sizing_1$pv * PV_COST * PV_RATE + sizing_1$storage * BAT_COST * BAT_RATE +
   sizing_1$max_load * LOAD_COST * INVT_RATE + OM_COST * sizing_1$max_load
 
+sizing_1 <- merge(sizing_1,opt_long_energy,by=c("county","state","case"))
+
 #get costs
 #Set costs
 BAT_COST = 400 # $/kWh
@@ -424,9 +428,10 @@ r_stats <- sizing_1 %>% group_by(reliability, case) %>% summarize(med_sol = medi
                                                                   pv_10 = quantile(pv,.1),
                                                                   stor_10 = quantile(storage,.1),
                                                                   pv_90 = quantile(pv,.9),
-                                                                  stor_90 = quantile(storage,.9))
+                                                                  stor_90 = quantile(storage,.9),
+                                                                  med_energy = median(energy))
 
-write.csv(r_stats,file = paste0(DIR,OUT, "\\size_cost_v3.csv"))
+write.csv(r_stats,file = paste0(DIR,OUT, "\\size_cost_v4.csv"))
 
 
 ##########################################################
@@ -463,17 +468,16 @@ write.csv(results, file = paste0(DIR2,OUT, "\\","600pv_100stor (min const)_month
 #create output for graph
 results<- fread(paste0(DIR,OUT,"\\600pv_100stor (min const)_month_shedding.csv"))
 results$shed_percent <- results$shed / results$load
+results$reliability <- as.numeric(results$reliability)
 
-final <- results %>% group_by(month) %>% 
-  summarize(shed_percent = mean(shed_percent))
+results_final <- merge(results, defect[,c(1:4,32:33)], by=c("county","state","case", "reliability"), 
+                       all.x = TRUE)
 
-write.csv(final, file = paste0(DIR2,OUT, "\\month_shedding.csv"))
+final <- results_final %>% group_by(month,current_defect_wconst) %>% 
+  summarize(shed_percent = mean(shed_percent),
+            count = length(county))
 
-final_2 <- results %>% group_by(month) %>% 
-  summarize(load = sum(load),
-            shed = sum(shed))
-
-final_2$shed_percent <- final_2$shed / final_2$load
+write.csv(final, file = paste0(DIR,OUT, "\\month_shedding_current.csv"))
 
 ##counting length of reliability
 for (i in 1:length(list)) {

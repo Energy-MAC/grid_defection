@@ -10,7 +10,9 @@ rm(list = ls())
 
 # Packages
 library(pacman)
-p_load(magrittr, dplyr, stringr, ggplot2,data.table, ggmap, usmap, mapproj,plyr)
+p_load(magrittr, dplyr, stringr, ggplot2,data.table, ggmap, 
+       usmap, mapproj,plyr,devtools,sp,maptools,rgdal,rgeos,sf,albersusa, 
+       raster, ggthemes)
 
 # Set working directory
 DIR <- "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
@@ -257,34 +259,51 @@ ann <- load %>% group_by(id) %>%
 ## II. geospatial plotting ###############################
 ##########################################################
 ##load in lat long for solar
-opt_data <- fread(paste0(DIR,INPUT,"\\optimization_list.csv"))
-sol_points <- opt_data[,c(6,5)]
-load_points <- unique(opt_data[,c(12,11)])
+opt_data <- fread(paste0(DIR,IN,"\\optimization_list_energy.csv"))
+sol_col <- fread(paste0(DIR,IN,"\\solar_collection.csv"))
+data <- merge(opt_data[,4:22],sol_col[,3:5],by=c("county","state"))
+data$gen <- data$gen/9
+
+#fip codes
+fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
+data <- merge(data, fips, by=c("county","state"))
 
 # plotting the points where I have load and solar data
-us <- map_data('world',
-               c('usa', "hawaii", "alaska","puerto rico"))
-ggplot()+
-  geom_polygon(data=us, aes(x=long, y=lat, group = group), colour="grey20", fill="white")+
-  geom_point(data = sol_points, aes(x = lon, y = lat.x, fill = "red"), 
-             size = 3, shape = 21)+
-  coord_map(projection = "mercator", xlim=c(-170, -60), ylim=c(15,65))+
-  theme_bw()
+plot_usmap(regions = "counties")  
 
-ggplot()+
-  geom_polygon(data=us, aes(x=long, y=lat, group = group), colour="grey20", fill="white")+
-  geom_point(data = load_points, aes(x = long, y = lat.y, fill = "red"), 
-             size = 3, shape = 21)+
-  coord_map(projection = "mercator", xlim=c(-170, -60), ylim=c(15,65))+
-  theme_bw()
+plot_usmap(data = data[,c("fips","gen")], values = "gen", regions = "counties",lines=NA) + 
+scale_fill_distiller(palette = "Spectral", limits=c(500,2000), na.value="black",
+                     labels = c("500","1000","1500","2000")) +
+labs(fill="Annual solar\n output (kWh) \n") + 
+theme(legend.position = c(0.89,0.2),legend.text=element_text(size=20),
+      legend.title=element_text(size=20,face="bold"))
 
-### plotting the solar potential
-plot_usmap(region = "county") + 
-  geom_point(data = sol_points, aes(x = lon, y = lat.x, fill = "red", alpha = 0.8), 
-             size = 2, shape = 21) +
-  labs(title = "US Counties", subtitle = "This is a blank map of the counties of the United States.") + 
-  theme(panel.background = element_rect(colour = "black", fill = "lightblue"))
-          
+##plotting load points
+us <- usa_composite(proj = "aeqd")
+load_points <- unique(data[,c(10,9)])
+load_points <- points_elided(load_points)
+load_points <- filter(load_points, lat < 60)
+
+coordinates(load_points) <- ~lon+lat
+proj4string(load_points) <- CRS(us_longlat_proj)
+load_points <- spTransform(load_points, CRSobj = CRS(us_aeqd_proj))
+load_points <- as.data.frame(coordinates(load_points))
+
+us_map <- fortify(us, region="name")
+
+ggplot() +
+  geom_map(
+    data = us_map, map = us_map,
+    aes(x = long, y = lat, map_id = id),
+    color = "#2b2b2b", size = 0.1, fill = NA
+  ) +
+  geom_point(
+    data = load_points, aes(lon, lat), size = 2, color = "red"
+  ) +
+  coord_equal() + # the points are pre-projected
+  ggthemes::theme_map()
+
+
 ##########################################################
 ## II. TMY correlation analysis ##########################
 ##########################################################
@@ -442,7 +461,7 @@ ggplot(daily_t, aes(correlation, colour=match, fill=match)) +
 mapping <- fread(paste0(DIR,IN,"state_mapping.csv"))
 
 plot_usmap(data = mapping, values = "Region", regions = "states") +  
-  theme(legend.position = c(0.89,0.2),legend.text=element_text(size=16),
+  theme(legend.position = c(.9,0.1),legend.text=element_text(size=16),
         legend.title=element_text(size=15,face="bold"),
         plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) +
   labs(fill="")
