@@ -35,7 +35,7 @@ addprocs(3)
 @everywhere ID_G = load(DIR * INPUT * "\\optimization_list.csv") |> DataFrame
 
 #include model
-@everywhere include("optimization_model.jl")
+@everywhere include("optimization_model_old.jl")
 
 # for i = 1:(nrow(ID_G)*3)
 #     solar_opt(ID_G, i)
