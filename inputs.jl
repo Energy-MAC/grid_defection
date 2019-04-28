@@ -18,8 +18,8 @@ addprocs(3)
 
 ##### CREATE MODEL RUN ######
 #Set Case
-@everywhere BAT_COST = 100 # $/kWh
-@everywhere PV_COST = 600 # $/kW
+@everywhere BAT_COST = 400 # $/kWh
+@everywhere PV_COST = 1200 # $/kW
 @everywhere LOAD_SHED = 0.01
 
 # Set constants

@@ -225,7 +225,7 @@ write.csv(sol_collection,paste0(DIR2, OUT,"solar_collection.csv"))
 DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 #DIR2 <- "C:\\Users\\Will\\Desktop\\data\\Analysis\\"
 
-folder <- "600pv_100stor (min const @99%)"
+folder <- "600pv_100stor (min const @4% DR)"
 
 list <- list.files(paste0(DIR2,OUT,folder,"\\"))
 list <- list[lapply(list,function(x) length(grep("outcome",x,value=FALSE))) == 0]

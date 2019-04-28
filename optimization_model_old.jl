@@ -81,8 +81,8 @@ function solar_opt(ID_G, i)
      
     GC.gc()
     #output
-    save("C:\\Users\\wgorman\\Desktop\\test2\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
-    save("C:\\Users\\wgorman\\Desktop\\test2\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
+    save("C:\\Users\\wgorman\\Desktop\\test\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
+    save("C:\\Users\\wgorman\\Desktop\\test\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
 
     #save(DIR * OUT * "\\1200pv_400stor (min const @4% DR)\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
     #save(DIR * OUT * "\\1200pv_400stor (min const @4% DR)\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
