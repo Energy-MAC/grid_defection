@@ -433,7 +433,7 @@ r_stats <- sizing_1 %>% group_by(reliability, case) %>% summarize(med_sol = medi
 
 write.csv(r_stats,file = paste0(DIR,OUT, "\\size_cost_v4.csv"))
 
-
+x
 ##########################################################
 ## III. Analyze load shedding ############################
 ##########################################################
@@ -480,6 +480,8 @@ final <- results_final %>% group_by(month,current_defect_wconst) %>%
 
 write.csv(final, file = paste0(DIR,OUT, "\\month_shedding_current.csv"))
 
+results <- data.frame()
+
 ##counting length of reliability
 for (i in 1:length(list)) {
   
@@ -510,7 +512,7 @@ for (i in 1:length(list)) {
   results <- rbind(results,as.data.frame(final))
 }
 
-write.csv(results, file = paste0(DIR2,OUT, "\\","600pv_100stor (min const)_reliability_score_v2.csv"))
+write.csv(results, file = paste0(DIR2,OUT, "\\","600pv_100stor (min const 4% DR)_reliability_score.csv"))
 
 #load in reliability results
 results<- fread(paste0(DIR,OUT,"\\600pv_100stor (min const)_reliability_score_v2.csv"))
