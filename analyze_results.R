@@ -38,6 +38,9 @@ sizing_1$version <- "600pv_100stor"
 sizing_2 <- fread(paste0(DIR,OUT,"\\1200pv_400stor (min const).csv"))
 sizing_2$version <- "1200pv_400stor"
 
+sizing_3 <- fread(paste0(DIR,OUT,"\\600pv_100stor (min const @99%).csv"))
+sizing_3$version <- "600pv_100stor @99"
+
 #fip codes
 fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
 
@@ -45,7 +48,7 @@ fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
 ## II. Simple graphs #####################################
 ##########################################################
 #select analysis sample
-sizing <- rbind(sizing_1,sizing_2)
+sizing <- rbind(sizing_1,sizing_3)
 sizing$reliability <- as.character(sizing$reliability)
 
 ##plotting reliability of 0
@@ -76,7 +79,7 @@ ggplot(sizing, aes(x=case, y=pv, fill=reliability)) +
   theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
         legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
         legend.position = c(0.9,.8)) + 
-  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
+  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3", "red"),labels = c("100%","99%", "95%")) +
   guides(colour = guide_legend(override.aes = list(size=10))) + 
   scale_y_continuous(trans = 'log10') + scale_x_discrete(limits=c("LOW","BASE","HIGH"))
 
@@ -90,7 +93,7 @@ ggplot(sizing, aes(x=case, y=storage, fill=reliability)) +
   theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
         legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
         legend.position = c(0.9,.8)) +  
-  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3"),labels = c("100%", "95%")) +
+  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3", "red"),labels = c("100%", "99%", "95%")) +
   guides(colour = guide_legend(override.aes = list(size=10)))+ 
   scale_y_continuous(trans = 'log10') + scale_x_discrete(limits=c("LOW","BASE","HIGH"))  
 

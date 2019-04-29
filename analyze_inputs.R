@@ -278,6 +278,16 @@ labs(fill="Annual solar\n output (kWh) \n") +
 theme(legend.position = c(0.89,0.2),legend.text=element_text(size=20),
       legend.title=element_text(size=20,face="bold"))
 
+#plot load data
+plot_usmap(data = data[,c("fips","med_energy")], values = "med_energy", regions = "counties",lines=NA) + 
+  scale_fill_distiller(palette = "Spectral", limits=c(7000,19000), na.value="black",
+                       labels = c("7000","11000","15000","19000"),
+                       breaks = c(7000,11000,15000,19000)) +
+  labs(fill="Annual\n consumption\n (kWh) \n") + 
+  theme(legend.position = c(0.89,0.2),legend.text=element_text(size=20),
+        legend.title=element_text(size=20,face="bold"))
+
+
 ##plotting load points
 us <- usa_composite(proj = "aeqd")
 load_points <- unique(data[,c(10,9)])
