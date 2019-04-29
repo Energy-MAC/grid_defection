@@ -28,7 +28,7 @@ function solar_opt(ID_G, i)
     min_l = min(min_l,0.3)
 
     # Set-up optimization model
-    m = Model(with_optimizer(Gurobi.Optimizer),OutputFlag=0) 
+    m = Model(solver = GurobiSolver(OutputFlag=0)) 
 
     @variables m begin
         x >= 0. ## solar capacity
@@ -55,33 +55,36 @@ function solar_opt(ID_G, i)
 
     @objective(m, Min, x * PV_COST * PV_RATE + y * BAT_COST * BAT_RATE + sum(power_out[i] for i in 1:78840) * 0.001) 
 
-   optimize!(m)
+    status = solve(m)
     
     #optimization solution
-    result[1, :pv] = value(x)
-    result[1, :storage] = value(y)
+    result[1, :pv] = getvalue(x)
+    result[1, :storage] = getvalue(y)
     #result[1, :shed_frac] = shed_amt
     #result[1, :id] = string(LOAD_SHED) * "_" * case * sol_id 
     #result[1, :load] = tot_load
     #result[1, :ann_cost] = getobjectivevalue(m)
     #result[1, :solar_tot] = getvalue(x) * sum(sol[i] for i in 1:78840)
-    result[1, :pv_curtail] = sum(value(pv_curtail[i]) for i in 1:78840)
+    result[1, :pv_curtail] = sum(getvalue(pv_curtail[i]) for i in 1:78840)
     #result[1, :shed_tot] = sum(getvalue(shed[i]) for i in 1:78840)
     
     #optimization results
-     outcome[1:78840, :sol] = sol * value(x)
+     outcome[1:78840, :sol] = sol * getvalue(x)
      outcome[1:78840, :load] = load_v
-     outcome[1:78840, :power_in] = value(power_in[i] for i in 1:78840)
-     outcome[1:78840, :power_out] = value(power_out[1:78840])
-     outcome[1:78840, :shed] = value(shed[1:78840])
-     outcome[1:78840, :pv_curtail] = value(pv_curtail)
-     outcome[1:78840, :bat_chg] = value(bat_chg[1:78840])
+     outcome[1:78840, :power_in] = getvalue(power_in[1:78840])
+     outcome[1:78840, :power_out] = getvalue(power_out[1:78840])
+     outcome[1:78840, :shed] = getvalue(shed[1:78840])
+     outcome[1:78840, :pv_curtail] = getvalue(pv_curtail)
+     outcome[1:78840, :bat_chg] = getvalue(bat_chg[1:78840])
      #outcome[1:78840, :shed_frac] = fill(shed_amt,78840)
      #outcome[1:78840, :id] = fill(case * sol_id,78840)
      
     GC.gc()
     #output
-    save(DIR * OUT * "\\1200pv_400stor (min const @4% DR)\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
-    save(DIR * OUT * "\\1200pv_400stor (min const @4% DR)\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
+    save("C:\\Users\\wgorman\\Desktop\\test\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
+    save("C:\\Users\\wgorman\\Desktop\\test\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
+
+    #save(DIR * OUT * "\\1200pv_400stor (min const @4% DR)\\results_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", result)
+    #save(DIR * OUT * "\\1200pv_400stor (min const @4% DR)\\outcome_" * string(LOAD_SHED) * "_" * case * sol_id * ".csv", outcome)
     
 end

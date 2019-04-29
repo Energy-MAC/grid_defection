@@ -443,7 +443,7 @@ write.csv(r_stats,file = paste0(DIR,OUT, "\\size_cost_v4.csv"))
 DIR2 <- "G:\\Team Drives\\grid_defect_data\\Analysis\\"
 #DIR2 <- "C:\\Users\\Will\\Desktop\\data\\Analysis\\"
 
-folder <- "\\600pv_100stor (min const)"
+folder <- "\\600pv_100stor (min const @4% DR)"
 
 list <- list.files(paste0(DIR2,OUT,folder,"\\"))
 list <- list[lapply(list,function(x) length(grep("results",x,value=FALSE))) == 0]
@@ -458,15 +458,16 @@ for (i in 1:length(list)) {
   out <- out %>% separate(id, c("remove","reliability","case","county","state"), "_")
   out$remove <- NULL
   out$month <- rep(x=1:12, each=730, length.out=78840)
+  out$year <-  rep(x=2008:2016, each=8760, length.out=78840)
   
-  final <- out %>% group_by(reliability, case, county,state,month) %>% 
+  final <- out %>% group_by(reliability, case, county,state,month,year) %>% 
     summarize(load = sum(load),
               shed = sum(shed))
   
   results <- rbind(results,as.data.frame(final))
 }
 
-write.csv(results, file = paste0(DIR2,OUT, "\\","600pv_100stor (min const)_month_shedding.csv"))
+write.csv(results, file = paste0(DIR2,OUT, "\\","600pv_100stor (min const 4% DR)_month_shedding.csv"))
 
 #create output for graph
 results<- fread(paste0(DIR,OUT,"\\600pv_100stor (min const)_month_shedding.csv"))

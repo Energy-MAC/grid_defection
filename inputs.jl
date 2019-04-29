@@ -18,8 +18,8 @@ addprocs(3)
 
 ##### CREATE MODEL RUN ######
 #Set Case
-@everywhere BAT_COST = 100 # $/kWh
-@everywhere PV_COST = 600 # $/kW
+@everywhere BAT_COST = 400 # $/kWh
+@everywhere PV_COST = 1200 # $/kW
 @everywhere LOAD_SHED = 0.01
 
 # Set constants
@@ -35,7 +35,7 @@ addprocs(3)
 @everywhere ID_G = load(DIR * INPUT * "\\optimization_list.csv") |> DataFrame
 
 #include model
-@everywhere include("optimization_model.jl")
+@everywhere include("optimization_model_old.jl")
 
 # for i = 1:(nrow(ID_G)*3)
 #     solar_opt(ID_G, i)
