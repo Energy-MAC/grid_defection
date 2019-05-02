@@ -204,7 +204,7 @@ ggsave(filename = paste0(DIR,OUT, "\\images\\density_ratio",".jpg"),width=11)
 ## III. Geospatial Analysis of costs #####################
 ##########################################################
 #select analysis sample
-sizing <- sizing_2
+sizing <- sizing_1
 
 #bring in load data
 opt <- fread(paste0(DIR,IN,"\\optimization_list_energy.csv"))
@@ -233,9 +233,9 @@ reliability <- reliability %>% group_by(case, county,state) %>%
 sizing <- merge(sizing,reliability,by=c("county","state","case"))
             
 #Set costs (2 cases )
-BAT_COST = 400 # $/kWh
-PV_COST = 1200 # $/kW
-LOAD_COST = 1300 # $/kW peak load
+BAT_COST = 100 # $/kWh
+PV_COST = 600 # $/kW
+LOAD_COST = 650 # $/kW peak load
 OM_COST = 12 # $/kW peak load per year
 
 #annual rates
@@ -267,7 +267,7 @@ sizes <- merge(sizing, fips, by=c("county","state"))
 ##plotting system costs
 #######################
 loads <- c("LOW","BASE","HIGH")
-rels <- c(0,0.05)
+rels <- c(0,0.01)
 
 for (index in 1:length(loads)){
   
@@ -275,14 +275,15 @@ for (index in 1:length(loads)){
     
       size <- subset(sizes, case == loads[index] & reliability == rels[rel])
       
-      plot_usmap(data = size[,c("fips","cost")], values = "cost", regions = "counties",lines=NA) + 
+      plot_usmap(data = size[,c("fips","grid_defect_cost")], values = "grid_defect_cost", regions = "counties",lines=NA) + 
         scale_fill_distiller(palette = "Spectral", limits=c(0,8000), oob=squish, na.value="black",
                              labels = c("0","2000","4000","6000",bquote({}>=8000))) +
         labs(fill="Annual \n cost \n ($) \n") + 
         theme(legend.position = c(0.89,0.2),legend.text=element_text(size=20),
               legend.title=element_text(size=20,face="bold"))
       
-      ggsave(filename = paste0(DIR,OUT, "\\images\\syscost_",rels[rel],"_",loads[index],".jpg"))
+      ggsave(filename = paste0(DIR,OUT, 
+                               "\\images\\syscost_",rels[rel],"_",loads[index],".jpg"),width=13)
   }
 }
 
@@ -353,10 +354,10 @@ for (index in 1:length(loads)){
          scale_fill_manual(values=cols,labels=labs,na.value="black") +
         theme(legend.position = c(0.85,0.2),legend.text=element_text(size=28),
               legend.title=element_text(size=24,face="bold"),
-              plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) + #guides(fill=FALSE) +
+              plot.title = element_text(size=18,face="bold", hjust=0.5, vjust=0)) + guides(fill=FALSE) +
         labs(fill="")
       
-      ggsave(filename = paste0(DIR,OUT, "\\images\\HC\\outcome_",rate[ra],"_",
+      ggsave(filename = paste0(DIR,OUT, "\\images\\PR\\outcome_",rate[ra],"_",
                                loads[index],"_",rels[rel],".jpg"),width=13)
     }
   }
@@ -481,12 +482,14 @@ final <- results_final %>% group_by(month,private_defect_wconst) %>%
 
 write.csv(final, file = paste0(DIR,OUT, "\\month_shedding_private.csv"))
 
-final_yr <- results_final %>% group_by(month,private_defect_wconst,year) %>% 
+final_yr <- results %>% group_by(month,year) %>% 
   summarize(shed = sum(shed),
             load = sum(load))
 
 write.csv(final_yr, file = paste0(DIR,OUT, "\\year_shedding_private.csv"))
 
+final_yr$shed_percent <- final_yr$shed / final_yr$load
+###########################
 results <- data.frame()
 
 ##counting length of reliability
