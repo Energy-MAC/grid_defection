@@ -14,8 +14,8 @@ p_load(magrittr, dplyr, stringr, ggplot2, usmap,
        RColorBrewer, data.table, scales,tidyr, S4Vectors)
 
 # Set working directory
-#DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
-DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+#DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
 OUT = "out"
 IN = "in"
 ##########################################################
@@ -71,32 +71,36 @@ ggplot(data=sizing[reliability=="0.05"], aes(pv,storage)) + geom_point(aes(color
 ggsave(filename = paste0(DIR,OUT, "\\images\\sizing_reliability_0.05.jpg"))
 
 ##box and whisker (solar)
-ggplot(sizing, aes(x=case, y=pv, fill=reliability)) + 
-  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Solar size (kW)") + 
-  theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
-        legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
-        legend.position = c(0.1,.9)) + 
-  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3", "red"),labels = c("100%","99%", "95%")) +
-  guides(colour = guide_legend(override.aes = list(size=10))) + 
-  scale_y_continuous(trans = 'log10') + scale_x_discrete(limits=c("LOW","BASE","HIGH"))
+  ggplot(sizing, aes(x=case, y=pv, fill=reliability)) + 
+    geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Solar size (kW)") + 
+    geom_hline(yintercept = 20, linetype="dashed",color="red") + 
+    annotate("text",x = 3, y=9,label="capacity constraint (20 kW)", color = "red") +
+    theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
+          legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
+          legend.position = c(0.15,.88)) + 
+    scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3", "red"),labels = c("100%","99%", "95%")) +
+    guides(colour = guide_legend(override.aes = list(size=10))) + 
+    scale_y_continuous(trans = 'log10') + scale_x_discrete(limits=c("LOW","BASE","HIGH")) 
 
 #breaks=seq(0,300,50), limits=c(0,300)
 
-ggsave(filename = paste0(DIR,OUT, "\\images\\pv_sizing.jpg"))
+ggsave(filename = paste0(DIR,OUT, "\\images\\pv_sizing.jpg"),width = 6, height = 5)
 
 #(storage)
 ggplot(sizing, aes(x=case, y=storage, fill=reliability)) + 
-  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Storage size (kWh)") + 
+  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Storage size (kWh)") +
+  geom_hline(yintercept = 84, linetype="dashed",color="red") + 
+  annotate("text",x = 2.9, y=20,label="capacity constraint (84 kWh)", color = "red") +
   theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
         legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
-        legend.position = c(0.1,.9)) +  
+        legend.position = c(0.15,.85)) +  
   scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3", "red"),labels = c("100%", "99%", "95%")) +
   guides(colour = guide_legend(override.aes = list(size=10)))+ 
   scale_y_continuous(trans = 'log10') + scale_x_discrete(limits=c("LOW","BASE","HIGH"))  
 
 #breaks=seq(0,700,100), limits=c(0,700)
 
-ggsave(filename = paste0(DIR,OUT, "\\images\\storage_sizing.jpg"))
+ggsave(filename = paste0(DIR,OUT, "\\images\\storage_sizing.jpg"),width = 6, height = 5)
 
 ##comparing reliability difference
 merged <- merge(sizing_3[,c(2,3,5:8)], sizing_4[,c(2,3,5:8)], by =c("reliability","case","county","state"))
@@ -170,19 +174,21 @@ for (index in seq(1, 4, 2)){
 
 plot_usmap(data = select(base_rates,one_of(c("fips", rates[index]))), 
            values = rates[index], regions = "counties",lines=NA) + 
-  scale_fill_distiller(palette = "Spectral", limits=c(-70,1500), oob=squish, na.value="black",
+  scale_fill_distiller(palette = "Blues", limits=c(-70,1500), oob=squish, na.value="black",
                        labels = c("0","500","1000",bquote({}>=1500))) + 
-    theme(legend.position = c(0.89,0.2),legend.text=element_text(size=20),
+    theme(legend.position = c(0.92,0.2),legend.text=element_text(size=20),
           legend.title=element_text(size=20,face="bold")) +
   labs(fill="Annual \n fixed \n  rate ($)\n")
-
+  
+#Spectral was original scale
+  
 ggsave(filename = paste0(DIR,OUT, "\\images\\",rates[index],".jpg"),width=11)
 
 plot_usmap(data = select(base_rates,one_of(c("fips", rates[index+1]))), 
            values = rates[index+1], regions = "counties",lines=NA) + 
-  scale_fill_distiller(palette = "Spectral", limits=c(0,20), oob=squish, na.value="black",
+  scale_fill_distiller(palette = "Greens", limits=c(0,20), oob=squish, na.value="black",
                        labels = c("0","5","10","15",bquote({}>=20))) + 
-  theme(legend.position = c(0.89,0.2),legend.text=element_text(size=20),
+  theme(legend.position = c(0.92,0.2),legend.text=element_text(size=20),
         legend.title=element_text(size=20,face="bold")) +
   labs(fill="Variable \n rate \n (\u00A2/kWh)\n")
 
