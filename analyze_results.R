@@ -174,8 +174,8 @@ for (index in seq(1, 4, 2)){
 
 plot_usmap(data = select(base_rates,one_of(c("fips", rates[index]))), 
            values = rates[index], regions = "counties",lines=NA) + 
-  scale_fill_distiller(palette = "Blues", limits=c(-70,1500), oob=squish, na.value="black",
-                       labels = c("0","500","1000",bquote({}>=1500))) + 
+  scale_fill_distiller(palette = "Blues", direction = 1, limits=c(-70,1500), oob=squish, 
+                       na.value="black",labels = c("0","500","1000",bquote({}>=1500))) + 
     theme(legend.position = c(0.92,0.2),legend.text=element_text(size=20),
           legend.title=element_text(size=20,face="bold")) +
   labs(fill="Annual \n fixed \n  rate ($)\n")
@@ -186,8 +186,8 @@ ggsave(filename = paste0(DIR,OUT, "\\images\\",rates[index],".jpg"),width=11)
 
 plot_usmap(data = select(base_rates,one_of(c("fips", rates[index+1]))), 
            values = rates[index+1], regions = "counties",lines=NA) + 
-  scale_fill_distiller(palette = "Greens", limits=c(0,20), oob=squish, na.value="black",
-                       labels = c("0","5","10","15",bquote({}>=20))) + 
+  scale_fill_distiller(palette = "Greens", direction = 1, limits=c(0,20), oob=squish, 
+                       na.value="black", labels = c("0","5","10","15",bquote({}>=20))) + 
   theme(legend.position = c(0.92,0.2),legend.text=element_text(size=20),
         legend.title=element_text(size=20,face="bold")) +
   labs(fill="Variable \n rate \n (\u00A2/kWh)\n")
@@ -200,7 +200,7 @@ ggplot(data = base_rates) +
   geom_histogram(aes(x=curr_ratio, fill="Current Rates")) + 
   geom_histogram(aes(x=private_ratio, fill="PMC Rates")) +
   scale_fill_manual(values=c("aquamarine3","deeppink4")) + 
-  xlab(label = "Revenue Source Ratio") + ylab(label = "Density") + 
+  xlab(label = "% recovery via fixed charges") + ylab(label = "Density") + 
   theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"),
         legend.text=element_text(size=20),legend.title=element_blank(),legend.position = c(0.5,0.9))  
 
@@ -371,26 +371,56 @@ for (index in 1:length(loads)){
 
 
 ## density plots
-rate <- c("private_diff","curr_diff")
 rels <- c(0,0.01)
 
-for (index in 1:length(rate)){
-  for(rel in 1:length(rels)){
+for(rel in 1:length(rels)){
+  
+  temp1 <- subset(defect[reliability==rels[rel]], case == "BASE")
+  row1 <- as.numeric(nrow(temp1))
+  temp2 <- subset(defect[reliability==rels[rel]], case == "LOW")
+  row2 <- as.numeric(nrow(temp2))
+  temp3 <- subset(defect[reliability==rels[rel]], case == "HIGH")
+  row3 <- as.numeric(nrow(temp3))
     
-    ggplot(defect[reliability==rels[rel]], aes_string(rate[index], colour="case", fill="case")) + 
-      geom_density(alpha=0.55) + geom_vline(xintercept=0) +
-      xlab(label = "solar/storage system cost savings $") + ylab(label = "Density") + 
-      theme(axis.text=element_text(size=22),axis.title=element_text(size=24,face="bold"), 
-            legend.text=element_text(size=24),legend.title=element_text(size=24,face="bold"),
-            legend.position = c(0.2,0.8)) + 
-      guides(colour = guide_legend(override.aes = list(size=14))) + 
-      scale_x_continuous(limits=c(-15000,1500), labels=dollar_format(prefix = "$")) + 
-      scale_y_continuous(limits=c(0,0.002))
+  ggplot() + 
+    geom_area(data = temp1, stat="bin", aes(x = private_diff,y=..count.., 
+                                            fill="Base"), alpha=0.55) + 
+    geom_area(data = temp2, stat="bin", aes(x = private_diff, y=..count.., 
+                                            fill="Low"), alpha=0.55) + 
+    geom_area(data = temp3, stat="bin", aes(x = private_diff,y=..count..,  
+                                            fill="High"), alpha=0.55) + 
+    scale_fill_manual(values=c("aquamarine3","deeppink4", "gold")) +
+    geom_vline(xintercept=0) + labs(fill="Load case") + 
+    xlab(label = "solar/storage system cost savings $") + ylab(label = "Count (# counties)") + 
+    theme(axis.text=element_text(size=22),axis.title=element_text(size=24,face="bold"), 
+          legend.text=element_text(size=24),legend.title=element_text(size=24,face="bold"),
+          legend.position = c(0.2,0.8), legend.key.size =  unit(1, 'cm')) + 
+    guides(colour = guide_legend(override.aes = list(size=14))) + 
+    scale_x_continuous(limits=c(-15000,1500), labels=dollar_format(prefix = "$")) + 
+    scale_y_continuous(limits=c(0,2000))
+  
+  ggsave(filename = paste0(DIR,OUT, "\\images\\density_private_diff_",rels[rel],".jpg"),width=10)
     
-    ggsave(filename = paste0(DIR,OUT, "\\images\\density_",rate[index],"_",rels[rel],".jpg"),width=13)
-    
-  }
+  ggplot() + 
+    geom_area(data = temp1, stat="bin", aes(x = curr_diff,y=..count.., 
+                                            fill="Base"), alpha=0.55) + 
+    geom_area(data = temp2, stat="bin", aes(x = curr_diff, y=..count.., 
+                                            fill="Low"), alpha=0.55) + 
+    geom_area(data = temp3, stat="bin", aes(x = curr_diff,y=..count..,  
+                                            fill="High"), alpha=0.55) + 
+    scale_fill_manual(values=c("aquamarine3","deeppink4", "gold")) +
+    geom_vline(xintercept=0) + labs(fill="Load case") + 
+    xlab(label = "solar/storage system cost savings $") + ylab(label = "Count (# counties)") + 
+    theme(axis.text=element_text(size=22),axis.title=element_text(size=24,face="bold"), 
+          legend.text=element_text(size=24),legend.title=element_text(size=24,face="bold"),
+          legend.position = c(0.2,0.8), legend.key.size =  unit(1, 'cm')) + 
+    guides(colour = guide_legend(override.aes = list(size=14))) + 
+    scale_x_continuous(limits=c(-15000,1500), labels=dollar_format(prefix = "$")) + 
+    scale_y_continuous(limits=c(0,2000))
+  
+  ggsave(filename = paste0(DIR,OUT, "\\images\\density_curr_diff_",rels[rel],".jpg"),width=10)
 }
+
 
 ##########################################################
 ## III. Sizes vs. cost assumptions #######################
