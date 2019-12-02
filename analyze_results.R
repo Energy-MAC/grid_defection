@@ -14,7 +14,7 @@ p_load(magrittr, dplyr, stringr, ggplot2, usmap,
        RColorBrewer, data.table, scales,tidyr, S4Vectors)
 
 # Set working directory
-DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
+DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2019 Off-grid\\Analysis\\"
 #DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\Analysis\\"
 OUT = "out"
 IN = "in"
@@ -34,9 +34,11 @@ rm(base_rates_100,base_rates_99)
 #solar/storage systems
 sizing_1 <- fread(paste0(DIR,OUT,"\\600pv_100stor (min const @4% DR).csv"))
 sizing_1$version <- "600pv_100stor"
+sizing_1$reliability <- as.character(sizing_1$reliability)
 
 sizing_2 <- fread(paste0(DIR,OUT,"\\1200pv_400stor (min const @4% DR).csv"))
 sizing_2$version <- "1200pv_400stor"
+sizing_2$reliability <- as.character(sizing_2$reliability)
 
 #fip codes
 fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
@@ -46,7 +48,7 @@ fips <- fread(paste0(DIR,OUT,"\\fips.csv"))
 ##########################################################
 #select analysis sample
 sizing <- rbind(sizing_1,sizing_2)
-sizing$reliability <- as.character(sizing$reliability)
+
 
 ##plotting reliability of 0
 ggplot(data=sizing[reliability=="0"], aes(pv,storage)) + geom_point(aes(color=case)) +
@@ -71,14 +73,14 @@ ggplot(data=sizing[reliability=="0.05"], aes(pv,storage)) + geom_point(aes(color
 ggsave(filename = paste0(DIR,OUT, "\\images\\sizing_reliability_0.05.jpg"))
 
 ##box and whisker (solar)
-  ggplot(sizing, aes(x=case, y=pv, fill=reliability)) + 
-    geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Solar size (kW)") + 
+  ggplot(sizing_1, aes(x=case, y=pv, fill=reliability)) + 
+    geom_boxplot() + xlab(label = "Demand Case") + ylab(label = "Solar size (kW)") + 
     geom_hline(yintercept = 20, linetype="dashed",color="red") + 
     annotate("text",x = 3, y=9,label="capacity constraint (20 kW)", color = "red") +
     theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
           legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
           legend.position = c(0.15,.88)) + 
-    scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3", "red"),labels = c("100%","99%", "95%")) +
+    scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3", "red"),labels = c("perfect","flexible", "95%")) +
     guides(colour = guide_legend(override.aes = list(size=10))) + 
     scale_y_continuous(trans = 'log10') + scale_x_discrete(limits=c("LOW","BASE","HIGH")) 
 
@@ -87,14 +89,14 @@ ggsave(filename = paste0(DIR,OUT, "\\images\\sizing_reliability_0.05.jpg"))
 ggsave(filename = paste0(DIR,OUT, "\\images\\pv_sizing.jpg"),width = 6, height = 5)
 
 #(storage)
-ggplot(sizing, aes(x=case, y=storage, fill=reliability)) + 
-  geom_boxplot() + xlab(label = "Load Case") + ylab(label = "Storage size (kWh)") +
+ggplot(sizing_1, aes(x=case, y=storage, fill=reliability)) + 
+  geom_boxplot() + xlab(label = "Demand Case") + ylab(label = "Storage size (kWh)") +
   geom_hline(yintercept = 84, linetype="dashed",color="red") + 
   annotate("text",x = 2.9, y=20,label="capacity constraint (84 kWh)", color = "red") +
   theme(axis.text=element_text(size=18),axis.title=element_text(size=20,face="bold"), 
         legend.text=element_text(size=20),legend.title=element_text(size=20,face="bold"),
         legend.position = c(0.15,.85)) +  
-  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3", "red"),labels = c("100%", "99%", "95%")) +
+  scale_fill_manual(values = c("cadetblue4", "darkgoldenrod3", "red"),labels = c("perfect", "flexible", "95%")) +
   guides(colour = guide_legend(override.aes = list(size=10)))+ 
   scale_y_continuous(trans = 'log10') + scale_x_discrete(limits=c("LOW","BASE","HIGH"))  
 
@@ -373,6 +375,10 @@ for (index in 1:length(loads)){
 ## density plots
 rels <- c(0,0.01)
 
+#specify levels
+# Or specify the factor levels in the order you want
+defect$case <- factor(defect$case, levels = c("LOW", "BASE", "HIGH"))
+
 for(rel in 1:length(rels)){
   
   temp1 <- subset(defect[reliability==rels[rel]], case == "BASE")
@@ -383,42 +389,42 @@ for(rel in 1:length(rels)){
   row3 <- as.numeric(nrow(temp3))
     
   ggplot() + 
-    geom_area(data = temp1, stat="bin", aes(x = private_diff,y=..count.., 
-                                            fill="Base"), alpha=0.55) + 
-    geom_area(data = temp2, stat="bin", aes(x = private_diff, y=..count.., 
+    geom_area(data = temp2, stat="bin", aes(x = private_diff,y=..count.., 
                                             fill="Low"), alpha=0.55) + 
+    geom_area(data = temp1, stat="bin", aes(x = private_diff, y=..count.., 
+                                            fill="Base"), alpha=0.55) + 
     geom_area(data = temp3, stat="bin", aes(x = private_diff,y=..count..,  
                                             fill="High"), alpha=0.55) + 
     scale_fill_manual(values=c("aquamarine3","deeppink4", "gold")) +
-    geom_vline(xintercept=0) + labs(fill="Load case") + 
-    xlab(label = "solar/storage system cost savings $") + ylab(label = "Count (# counties)") + 
+    geom_vline(xintercept=0) + labs(fill="Demand case") + 
+    xlab(label = "solar/storage system cost savings $") + ylab(label = "Number of counties") + 
     theme(axis.text=element_text(size=22),axis.title=element_text(size=24,face="bold"), 
           legend.text=element_text(size=24),legend.title=element_text(size=24,face="bold"),
-          legend.position = c(0.2,0.8), legend.key.size =  unit(1, 'cm')) + 
+          legend.position = c(0.2,0.6), legend.key.size =  unit(1, 'cm')) + 
     guides(colour = guide_legend(override.aes = list(size=14))) + 
     scale_x_continuous(limits=c(-15000,1500), labels=dollar_format(prefix = "$")) + 
     scale_y_continuous(limits=c(0,2000))
   
-  ggsave(filename = paste0(DIR,OUT, "\\images\\density_private_diff_",rels[rel],".jpg"),width=10)
+  ggsave(filename = paste0(DIR,OUT, "\\images\\density_private_diff_",rels[rel],".jpg"),width=8)
     
   ggplot() + 
-    geom_area(data = temp1, stat="bin", aes(x = curr_diff,y=..count.., 
-                                            fill="Base"), alpha=0.55) + 
-    geom_area(data = temp2, stat="bin", aes(x = curr_diff, y=..count.., 
+    geom_area(data = temp2, stat="bin", aes(x = curr_diff,y=..count.., 
                                             fill="Low"), alpha=0.55) + 
+    geom_area(data = temp1, stat="bin", aes(x = curr_diff, y=..count.., 
+                                            fill="Base"), alpha=0.55) + 
     geom_area(data = temp3, stat="bin", aes(x = curr_diff,y=..count..,  
                                             fill="High"), alpha=0.55) + 
     scale_fill_manual(values=c("aquamarine3","deeppink4", "gold")) +
-    geom_vline(xintercept=0) + labs(fill="Load case") + 
-    xlab(label = "solar/storage system cost savings $") + ylab(label = "Count (# counties)") + 
+    geom_vline(xintercept=0) + labs(fill="Demand case") + 
+    xlab(label = "solar/storage system cost savings $") + ylab(label = "Number of counties") + 
     theme(axis.text=element_text(size=22),axis.title=element_text(size=24,face="bold"), 
           legend.text=element_text(size=24),legend.title=element_text(size=24,face="bold"),
-          legend.position = c(0.2,0.8), legend.key.size =  unit(1, 'cm')) + 
+          legend.position = c(0.2,0.6), legend.key.size =  unit(1, 'cm')) + 
     guides(colour = guide_legend(override.aes = list(size=14))) + 
     scale_x_continuous(limits=c(-15000,1500), labels=dollar_format(prefix = "$")) + 
     scale_y_continuous(limits=c(0,2000))
   
-  ggsave(filename = paste0(DIR,OUT, "\\images\\density_curr_diff_",rels[rel],".jpg"),width=10)
+  ggsave(filename = paste0(DIR,OUT, "\\images\\density_curr_diff_",rels[rel],".jpg"),width=8)
 }
 
 
