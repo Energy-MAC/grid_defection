@@ -1,26 +1,24 @@
 ##run
-# cd("C:\\Users\\wgorman\\Desktop\\grid_defection\\")
-# cd("C:\\Users\\Will\\Desktop\\grid_defection\\")
+# cd("G:\\My Drive\\Solar & storage paper\\Code & analysis\\reliability\\grid_defection")
 # include("inputs.jl")
+
 ## set up inputs
 using Distributed
 
 addprocs(3)
 
-@everywhere using  DataFrames, Gurobi, FileIO, TextParse, CSVFiles, JuMP
+@everywhere using  DataFrames, Clp, FileIO, TextParse, CSVFiles, JuMP
 
 # Set-working directory
-#DIR = "C:\\Users\\will-\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\"
-#DIR = "C:\\Users\\Will\\GoogleDrive\\UCBerkeley\\Research\\Papers\\2018 Off-grid\\"
-@everywhere DIR = "G:\\Team Drives\\grid_defect_data\\"
-@everywhere OUT = "Analysis\\out"
-@everywhere INPUT = "Analysis\\in"
+@everywhere DIR = "G:\\My Drive\\Solar & storage paper\\Code & analysis\\reliability\\"
+@everywhere OUT = "out\\defection\\"
+@everywhere INPUT = "in\\sol_load\\tmy\\csv\\"
 
 ##### CREATE MODEL RUN ######
 #Set Case
 @everywhere BAT_COST = 400 # $/kWh
 @everywhere PV_COST = 1200 # $/kW
-@everywhere LOAD_SHED = 0.01
+@everywhere LOAD_SHED = 0.05
 
 # Set constants
 @everywhere BAT_EFF = 0.92
@@ -35,11 +33,7 @@ addprocs(3)
 @everywhere ID_G = load(DIR * INPUT * "\\optimization_list.csv") |> DataFrame
 
 #include model
-@everywhere include("optimization_model_old.jl")
-
-# for i = 1:(nrow(ID_G)*3)
-#     solar_opt(ID_G, i)
-# end
+@everywhere include("optimization_model.jl")
 
 # Create parallelization
 time = @time pmap(1:(nrow(ID_G)*3)) do i 
